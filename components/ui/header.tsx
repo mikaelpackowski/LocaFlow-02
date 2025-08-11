@@ -20,7 +20,6 @@ export default function Header() {
           <Link href="/proprietaire" className="hover:text-blue-600">Propriétaire</Link>
           <Link href="/locataire" className="hover:text-blue-600">Locataire</Link>
           <Link href="/annonces" className="hover:text-blue-600">Annonces</Link>
-          <Link href="/presentation" className="hover:text-blue-600">Découvrir LocaFlow</Link>
           <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
           <Link href="/contact" className="hover:text-blue-600">Contact</Link>
 
