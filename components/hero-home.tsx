@@ -1,0 +1,66 @@
+import Image from "next/image";
+
+export default function Hero() {
+  return (
+    <section className="relative">
+      {/* Image de fond pleine largeur */}
+      <div className="relative h-[70vh] min-h-[480px] w-full overflow-hidden md:h-[78vh]">
+        <Image
+          src="/images/hero-header.jpg" // ← ton image
+          alt="Façades d'immeubles parisiens"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+
+        {/* Overlays */}
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/45 to-transparent" />
+
+        {/* Contenu centré */}
+        <div className="relative z-10 mx-auto flex h-full max-w-6xl items-center px-4 sm:px-6">
+          <div className="w-full text-center">
+            {/* Titre */}
+            <h1 className="mx-auto max-w-4xl text-4xl md:text-6xl font-extrabold text-white leading-tight">
+              Gérez vos biens en toute simplicité avec{" "}
+              <span className="bg-gradient-to-r from-indigo-300 to-pink-300 bg-clip-text text-transparent">
+                LocaFlow
+              </span>
+            </h1>
+
+            {/* Sous-titre */}
+            <p className="mx-auto mt-5 max-w-2xl text-base md:text-lg text-white/85">
+              Dépôt de bien, gestion locative, suivi des loyers et automatisations —
+              tout sur une seule plateforme.
+            </p>
+
+            {/* Boutons */}
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+              {/* Primaire : violet uni */}
+              <a
+                href="/auth/login"
+                className="inline-flex items-center justify-center rounded-full bg-violet-500 px-7 py-3 text-white font-semibold shadow-lg shadow-black/20 transition hover:bg-violet-600 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Commencer maintenant
+              </a>
+
+              {/* Secondaire : verre / contour */}
+              <a
+                href="/presentation"
+                className="inline-flex items-center justify-center rounded-full bg-white/10 backdrop-blur px-7 py-3 font-semibold text-white border border-white/30 shadow-md transition hover:bg-white/20 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Découvrir LocaFlow
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Séparateur sous le header */}
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="border-t border-gray-200 py-12 md:py-16" />
+      </div>
+    </section>
+  );
+}
