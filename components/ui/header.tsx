@@ -44,13 +44,13 @@ export default function Header() {
         <div className="relative">
           {/* Non connecté → simple bouton Se connecter */}
           {!loggedIn ? (
-            <button
-              onClick={() => signIn(undefined, { callbackUrl: "/" })}
-              className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-            >
-              Se connecter
-            </button>
-          ) : (
+  <Link
+    href="/auth/login"
+    className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+  >
+    Se connecter
+  </Link>
+) : (
             <>
               <button
                 onClick={() => setOpen((v) => !v)}
