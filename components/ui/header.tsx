@@ -1,179 +1,181 @@
 "use client";
 
+import { Fragment, useMemo } from "react";
 import Link from "next/link";
-import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { Menu, Transition } from "@headlessui/react";
 
-// Optionnel: si tu ajoutes un rôle dans la session, tu peux le typer plus tard.
-// declare module "next-auth" {
-//   interface User { role?: "owner" | "tenant"; }
-//   interface Session { user?: { role?: "owner" | "tenant"; email?: string | null } }
-// }
+/** petit utilitaire pour des classes */
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+/** Initiales à partir du nom / email */
+function initials(name?: string | null, email?: string | null) {
+  const src = name || email || "";
+  const parts = src.split(/[ .@_-]+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return (first + second).toUpperCase() || "U";
+}
 
 export default function Header() {
-  const { data: session, status } = useSession(); // 'loading' | 'authenticated' | 'unauthenticated'
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [acctOpen, setAcctOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const user = session?.user as (typeof session extends { user: infer U } ? U : any) | undefined;
 
-  const isAuth = status === "authenticated";
-  const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
-  const email = session?.user?.email ?? undefined;
+  // On s’attend à ce que NextAuth mette le rôle sur user.role (owner | tenant).
+  // On sécurise avec un fallback.
+  const role = useMemo<"owner" | "tenant" | undefined>(() => {
+    const r = (user as any)?.role;
+    return r === "owner" || r === "tenant" ? r : undefined;
+  }, [user]);
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
+    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white shadow">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        {/* Logo / Accueil */}
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-blue-600">
-          <span>LocaFlow</span>
+        {/* Logo → Accueil */}
+        <Link href="/" className="text-xl font-bold text-gray-800 hover:text-indigo-600">
+          LocaFlow
         </Link>
 
-        {/* Menu desktop */}
+        {/* Liens principaux (on reste simple comme convenu) */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link href="/annonces" className="hover:text-blue-600">Annonces</Link>
-          <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
-          <Link href="/contact" className="hover:text-blue-600">Contact</Link>
-
-          {/* Compte */}
-          <div className="relative">
-            <button
-              onClick={() => setAcctOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
-              aria-haspopup="menu"
-              aria-expanded={acctOpen}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-gray-700">
-                <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6Z" fill="currentColor" opacity=".25" />
-                <path d="M21 24c0-4.97-4.03-9-9-9s-9 4.03-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <span className="hidden sm:inline">{isAuth ? (email || "Mon compte") : "Se connecter"}</span>
-            </button>
-
-            {acctOpen && (
-              <div
-                className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border bg-white shadow-xl"
-                role="menu"
-              >
-                {!isAuth ? (
-                  <div className="p-2">
-                    <Link
-                      href="/auth/login"
-                      className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
-                      onClick={() => setAcctOpen(false)}
-                    >
-                      Se connecter
-                    </Link>
-                    <div className="my-2 h-px bg-gray-100" />
-                    <div className="px-3 py-2 text-xs text-gray-500">
-                      Accédez ensuite à votre tableau de bord locataire ou propriétaire.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-2">
-                    {role === "owner" ? (
-                      <>
-                        <Link
-                          href="/proprietaire/dashboard"
-                          className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
-                          onClick={() => setAcctOpen(false)}
-                        >
-                          Dashboard propriétaire
-                        </Link>
-                        <Link
-                          href="/proprietaire/biens/nouveau"
-                          className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
-                          onClick={() => setAcctOpen(false)}
-                        >
-                          Déposer un bien
-                        </Link>
-                      </>
-                    ) : (
-                      <>
-                        <Link
-                          href="/locataire/dashboard"
-                          className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
-                          onClick={() => setAcctOpen(false)}
-                        >
-                          Dashboard locataire
-                        </Link>
-                        <Link
-                          href="/locataire/candidatures"
-                          className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
-                          onClick={() => setAcctOpen(false)}
-                        >
-                          Mes candidatures
-                        </Link>
-                      </>
-                    )}
-
-                    <div className="my-2 h-px bg-gray-100" />
-                    <button
-                      onClick={() => { setAcctOpen(false); signOut({ callbackUrl: "/" }); }}
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
-                    >
-                      Se déconnecter
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <Link href="/annonces" className="hover:text-indigo-600">
+            Annonces
+          </Link>
+          <Link href="/faq" className="hover:text-indigo-600">
+            FAQ
+          </Link>
+          <Link href="/contact" className="hover:text-indigo-600">
+            Contact
+          </Link>
         </nav>
 
-        {/* Burger (mobile) */}
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="rounded md:hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Ouvrir/fermer le menu"
-        >
-          <svg className="h-6 w-6 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            {/* Icône burger */}
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Menu mobile simple */}
-      {menuOpen && (
-        <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
-          <Link href="/annonces" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>Annonces</Link>
-          <Link href="/faq" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>FAQ</Link>
-          <Link href="/contact" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>Contact</Link>
-          <div className="h-px bg-gray-100" />
-          {!isAuth ? (
-            <Link href="/auth/login" className="block rounded-lg bg-gray-900 px-3 py-2 text-white" onClick={() => setMenuOpen(false)}>
+        {/* Compte */}
+        <div className="flex items-center gap-3">
+          {/* État : non connecté */}
+          {status !== "authenticated" && (
+            <Link
+              href="/auth/login"
+              className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            >
               Se connecter
             </Link>
-          ) : (
-            <>
-              {role === "owner" ? (
-                <>
-                  <Link href="/proprietaire/dashboard" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>
-                    Dashboard propriétaire
-                  </Link>
-                  <Link href="/proprietaire/biens/nouveau" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>
-                    Déposer un bien
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link href="/locataire/dashboard" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>
-                    Dashboard locataire
-                  </Link>
-                  <Link href="/locataire/candidatures" className="block hover:text-blue-600" onClick={() => setMenuOpen(false)}>
-                    Mes candidatures
-                  </Link>
-                </>
-              )}
-              <button
-                onClick={() => { setMenuOpen(false); signOut({ callbackUrl: "/" }); }}
-                className="mt-2 w-full rounded-lg border px-3 py-2 text-left hover:bg-gray-50"
-              >
-                Se déconnecter
-              </button>
-            </>
           )}
-        </nav>
-      )}
+
+          {/* État : connecté */}
+          {status === "authenticated" && (
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
+                aria-label="Menu compte"
+              >
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-bold"
+                  aria-hidden
+                >
+                  {initials(user?.name as string, user?.email as string)}
+                </span>
+                <span className="hidden sm:inline text-gray-800">
+                  {user?.name || user?.email || "Mon compte"}
+                </span>
+                <svg
+                  className="h-4 w-4 text-gray-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </Menu.Button>
+
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items className="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border bg-white p-2 shadow-lg focus:outline-none">
+                  {/* Lien commun : Profil / Paramètres */}
+                  <MenuLink href="/compte" label="Mon profil" />
+                  <MenuSeparator />
+
+                  {/* Raccourcis selon rôle */}
+                  {role === "owner" ? (
+                    <>
+                      <MenuGroup label="Propriétaire" />
+                      <MenuLink href="/proprietaire/dashboard" label="Tableau de bord" />
+                      <MenuLink href="/proprietaire/biens" label="Mes biens" />
+                      <MenuLink href="/proprietaire/depots" label="Déposer un bien" />
+                      <MenuLink href="/proprietaire/paiements" label="Paiements" />
+                      <MenuSeparator />
+                    </>
+                  ) : role === "tenant" ? (
+                    <>
+                      <MenuGroup label="Locataire" />
+                      <MenuLink href="/locataire/dashboard" label="Tableau de bord" />
+                      <MenuLink href="/locataire/candidatures" label="Mes candidatures" />
+                      <MenuLink href="/locataire/visites" label="Mes visites" />
+                      <MenuLink href="/locataire/paiements" label="Paiements" />
+                      <MenuSeparator />
+                    </>
+                  ) : null}
+
+                  {/* Déconnexion */}
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => signOut({ callbackUrl: "/" })}
+                        className={cn(
+                          "w-full rounded-lg px-3 py-2 text-left text-sm font-medium",
+                          active ? "bg-rose-50 text-rose-700" : "text-rose-600"
+                        )}
+                      >
+                        Se déconnecter
+                      </button>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Transition>
+            </Menu>
+          )}
+        </div>
+      </div>
     </header>
   );
+}
+
+/* --- Petits composants de menu --- */
+
+function MenuLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Menu.Item>
+      {({ active }) => (
+        <Link
+          href={href}
+          className={cn(
+            "block rounded-lg px-3 py-2 text-sm",
+            active ? "bg-gray-100 text-gray-900" : "text-gray-800"
+          )}
+        >
+          {label}
+        </Link>
+      )}
+    </Menu.Item>
+  );
+}
+
+function MenuGroup({ label }: { label: string }) {
+  return <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>;
+}
+
+function MenuSeparator() {
+  return <div className="my-1 h-px w-full bg-gray-100" aria-hidden="true" />;
 }
