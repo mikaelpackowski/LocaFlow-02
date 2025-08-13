@@ -1,22 +1,22 @@
+// components/ui/header.tsx
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function Header() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
 
+  const isLoading = status === "loading";
   const isAuth = status === "authenticated";
   const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
 
   const dashboardHref =
-    role === "owner"
-      ? "/proprietaire/dashboard"
-      : role === "tenant"
-      ? "/locataire/dashboard"
-      : "/"; // fallback
+    role === "owner" ? "/proprietaire/dashboard"
+    : role === "tenant" ? "/locataire/dashboard"
+    : "/";
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
@@ -25,49 +25,56 @@ export default function Header() {
           LocaFlow
         </Link>
 
-        {/* Liens simples */}
+        {/* Liens */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
           <Link href="/annonces" className="hover:text-blue-600">Annonces</Link>
           <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
           <Link href="/contact" className="hover:text-blue-600">Contact</Link>
         </nav>
 
-        {/* Bouton Compte */}
+        {/* Compte */}
         <div className="relative">
-          {!isAuth ? (
-            <button
-              onClick={() => signIn(undefined, { callbackUrl: "/" })}
+          {isLoading && (
+            <div className="h-9 w-[120px] animate-pulse rounded-lg bg-gray-200" />
+          )}
+
+          {!isLoading && !isAuth && (
+            <Link
+              href="/auth/login"
               className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
             >
               Se connecter
-            </button>
-          ) : (
+            </Link>
+          )}
+
+          {!isLoading && isAuth && (
             <>
               <button
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => setOpen(v => !v)}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
               >
-                <span className="inline-block h-6 w-6 rounded-full bg-indigo-600 text-white grid place-items-center">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-indigo-600 text-white">
                   {session?.user?.name?.[0]?.toUpperCase() ?? "C"}
                 </span>
                 Compte
               </button>
-
               {open && (
                 <div
-                  onMouseLeave={() => setOpen(false)}
                   className="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border bg-white shadow-lg"
+                  onMouseLeave={() => setOpen(false)}
                 >
                   <div className="px-4 py-3">
                     <p className="text-sm font-semibold text-gray-900">
                       {session?.user?.name ?? "Mon compte"}
                     </p>
-                    <p className="text-xs text-gray-500 break-all">
-                      {session?.user?.email}
-                    </p>
+                    {session?.user?.email && (
+                      <p className="break-all text-xs text-gray-500">
+                        {session.user.email}
+                      </p>
+                    )}
                     {role && (
                       <p className="mt-1 inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
-                        rôle&nbsp;: {role === "owner" ? "propriétaire" : "locataire"}
+                        rôle : {role === "owner" ? "propriétaire" : "locataire"}
                       </p>
                     )}
                   </div>
@@ -80,7 +87,6 @@ export default function Header() {
                     >
                       Tableau de bord
                     </Link>
-
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
                       className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
