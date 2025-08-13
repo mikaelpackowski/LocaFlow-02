@@ -1,7 +1,6 @@
-// components/ui/header.tsx (Server Component)
 import HeaderClient from "./header-client";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options"; // ← adapte si ton fichier s’appelle autrement
+import { authOptions } from "@/lib/auth-options";
 
 export default async function Header() {
   const session = await getServerSession(authOptions);
