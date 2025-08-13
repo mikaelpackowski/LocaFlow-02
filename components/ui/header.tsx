@@ -38,15 +38,12 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        {/* Logo */}
+        {/* Logo texte uniquement */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-gray-900"
+          className="text-xl font-extrabold tracking-tight text-gray-900"
         >
-          <span className="inline-block rounded-md bg-violet-600 px-2 py-1 text-white">
-            L
-          </span>
-          <span>LocaFlow</span>
+          LocaFlow
         </Link>
 
         {/* Desktop nav */}
