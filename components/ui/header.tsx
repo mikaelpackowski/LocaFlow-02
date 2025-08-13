@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 const nav = [
   { href: "/annonces", label: "Annonces" },
@@ -12,13 +13,16 @@ const nav = [
 
 export default function Header() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);          // mobile menu
-  const [acctOpen, setAcctOpen] = useState(false);  // desktop dropdown
+  const { data: session, status } = useSession(); // "loading" | "authenticated" | "unauthenticated"
+
+  const [open, setOpen] = useState(false);          // menu mobile
+  const [acctOpen, setAcctOpen] = useState(false);  // dropdown desktop
   const acctRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
 
+  // ferme le dropdown au clic extérieur / Escape
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!acctRef.current) return;
@@ -34,6 +38,10 @@ export default function Header() {
       document.removeEventListener("keydown", onKey);
     };
   }, []);
+
+  // rôle et nom utilisateur si connecté
+  const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
+  const name = session?.user?.name ?? "Mon compte";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
@@ -62,7 +70,7 @@ export default function Header() {
             </Link>
           ))}
 
-          {/* Bouton Compte */}
+          {/* Bouton / Dropdown Compte */}
           <div className="relative" ref={acctRef}>
             <button
               onClick={() => setAcctOpen((v) => !v)}
@@ -79,7 +87,7 @@ export default function Header() {
                   strokeLinejoin="round"
                 />
               </svg>
-              Compte
+              {status === "authenticated" ? name : "Compte"}
               <svg className="h-4 w-4 opacity-70" viewBox="0 0 24 24" fill="none">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               </svg>
@@ -90,36 +98,59 @@ export default function Header() {
                 role="menu"
                 className="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
               >
-                <div className="p-2">
-                  <Link
-                    href="/auth/login"
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
-                    onClick={() => setAcctOpen(false)}
-                    role="menuitem"
-                  >
-                    Se connecter
-                  </Link>
-                </div>
-                <div className="border-t" />
-                <div className="p-2">
-                  <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Dashboards
+                {status !== "authenticated" ? (
+                  // NON CONNECTÉ → juste "Se connecter"
+                  <div className="p-2">
+                    <Link
+                      href="/auth/login"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
+                      onClick={() => setAcctOpen(false)}
+                      role="menuitem"
+                    >
+                      Se connecter
+                    </Link>
                   </div>
-                  <Link
-                    href="/proprietaire/dashboard"
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setAcctOpen(false)}
-                  >
-                    Tableau de bord Propriétaire
-                  </Link>
-                  <Link
-                    href="/locataire/dashboard"
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setAcctOpen(false)}
-                  >
-                    Tableau de bord Locataire
-                  </Link>
-                </div>
+                ) : (
+                  <>
+                    {/* CONNECTÉ → Dashboards selon le rôle + déconnexion */}
+                    <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Mon espace
+                    </div>
+                    <div className="p-2">
+                      {role === "owner" && (
+                        <Link
+                          href="/proprietaire/dashboard"
+                          className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => setAcctOpen(false)}
+                        >
+                          Tableau de bord Propriétaire
+                        </Link>
+                      )}
+                      {role === "tenant" && (
+                        <Link
+                          href="/locataire/dashboard"
+                          className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => setAcctOpen(false)}
+                        >
+                          Tableau de bord Locataire
+                        </Link>
+                      )}
+                      {/* Si un jour tu veux afficher les deux pour un compte multi-rôle, dupliques les deux liens. */}
+                    </div>
+                    <div className="border-t" />
+                    <div className="p-2">
+                      <button
+                        onClick={() => {
+                          setAcctOpen(false);
+                          signOut({ callbackUrl: "/" });
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
+                      >
+                        Se déconnecter
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -158,38 +189,54 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
+
             <div className="mt-2 rounded-xl border bg-white">
               <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Compte
               </div>
-              <div className="p-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
-                >
-                  Se connecter
-                </Link>
-                <div className="mt-2 rounded-lg bg-gray-50 p-2">
-                  <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                    Dashboards
-                  </div>
+
+              {status !== "authenticated" ? (
+                <div className="p-2">
                   <Link
-                    href="/proprietaire/dashboard"
+                    href="/auth/login"
                     onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block rounded-lg px-3 py-2 text-sm text-gray-900 hover:bg-gray-50"
                   >
-                    Dashboard Propriétaire
-                  </Link>
-                  <Link
-                    href="/locataire/dashboard"
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Dashboard Locataire
+                    Se connecter
                   </Link>
                 </div>
-              </div>
+              ) : (
+                <div className="p-2">
+                  {role === "owner" && (
+                    <Link
+                      href="/proprietaire/dashboard"
+                      onClick={() => setOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Dashboard Propriétaire
+                    </Link>
+                  )}
+                  {role === "tenant" && (
+                    <Link
+                      href="/locataire/dashboard"
+                      onClick={() => setOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Dashboard Locataire
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
+                  >
+                    Se déconnecter
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
         </div>
