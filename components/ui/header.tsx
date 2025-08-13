@@ -19,7 +19,6 @@ export default function Header() {
   const isActive = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
 
-  // Fermer le dropdown Compte au clic extérieur / ESC
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!acctRef.current) return;
@@ -39,7 +38,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        {/* Logo → Accueil */}
+        {/* Logo */}
         <Link
           href="/"
           className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-gray-900"
@@ -50,7 +49,7 @@ export default function Header() {
           <span>LocaFlow</span>
         </Link>
 
-        {/* Nav desktop */}
+        {/* Desktop nav */}
         <nav className="hidden items-center gap-6 md:flex">
           {nav.map((item) => (
             <Link
@@ -66,7 +65,7 @@ export default function Header() {
             </Link>
           ))}
 
-          {/* Bouton Compte + dropdown */}
+          {/* Bouton Compte */}
           <div className="relative" ref={acctRef}>
             <button
               onClick={() => setAcctOpen((v) => !v)}
@@ -74,8 +73,7 @@ export default function Header() {
               aria-expanded={acctOpen}
               className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
             >
-              {/* icône user */}
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5ZM3 21a9 9 0 0 1 18 0v1H3Z"
                   stroke="currentColor"
@@ -85,7 +83,7 @@ export default function Header() {
                 />
               </svg>
               Compte
-              <svg className="h-4 w-4 opacity-70" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg className="h-4 w-4 opacity-70" viewBox="0 0 24 24" fill="none">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               </svg>
             </button>
@@ -108,35 +106,12 @@ export default function Header() {
                 <div className="border-t" />
                 <div className="p-2">
                   <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Créer un compte
-                  </div>
-                  <Link
-                    href="/proprietaire/inscription"
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setAcctOpen(false)}
-                    role="menuitem"
-                  >
-                    Compte Propriétaire
-                  </Link>
-                  <Link
-                    href="/locataire/inscription"
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    onClick={() => setAcctOpen(false)}
-                    role="menuitem"
-                  >
-                    Compte Locataire
-                  </Link>
-                </div>
-                <div className="border-t" />
-                <div className="p-2">
-                  <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Dashboards
                   </div>
                   <Link
                     href="/proprietaire/dashboard"
                     className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     onClick={() => setAcctOpen(false)}
-                    role="menuitem"
                   >
                     Tableau de bord Propriétaire
                   </Link>
@@ -144,7 +119,6 @@ export default function Header() {
                     href="/locataire/dashboard"
                     className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     onClick={() => setAcctOpen(false)}
-                    role="menuitem"
                   >
                     Tableau de bord Locataire
                   </Link>
@@ -171,7 +145,7 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Menu mobile */}
+      {/* Mobile nav */}
       {open && (
         <div className="border-t bg-white md:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
@@ -187,8 +161,6 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
-
-            {/* Bloc Compte en mobile */}
             <div className="mt-2 rounded-xl border bg-white">
               <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Compte
@@ -201,26 +173,6 @@ export default function Header() {
                 >
                   Se connecter
                 </Link>
-                <div className="mt-2 rounded-lg bg-gray-50 p-2">
-                  <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                    Créer un compte
-                  </div>
-                  <Link
-                    href="/proprietaire/inscription"
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Propriétaire
-                  </Link>
-                  <Link
-                    href="/locataire/inscription"
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Locataire
-                  </Link>
-                </div>
-
                 <div className="mt-2 rounded-lg bg-gray-50 p-2">
                   <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                     Dashboards
