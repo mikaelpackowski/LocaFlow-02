@@ -5,132 +5,136 @@ import { useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const { data: session, status } = useSession(); // ← se met à jour après login/logout
   const [open, setOpen] = useState(false);
 
-  const loggedIn = status === "authenticated";
-  const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
+  const role = (session as any)?.user?.role as "owner" | "tenant" | undefined;
 
-  const dashboardHref =
-    role === "tenant"
-      ? "/locataire/dashboard"
-      : "/proprietaire/dashboard";
+  const dashboardLinks =
+    role === "owner"
+      ? [
+          { href: "/proprietaire/dashboard", label: "Tableau de bord" },
+          { href: "/proprietaire/biens", label: "Mes biens" },
+          { href: "/proprietaire/candidatures", label: "Candidatures" },
+          { href: "/proprietaire/paiements", label: "Paiements" },
+          { href: "/proprietaire/documents", label: "Documents" },
+          { href: "/proprietaire/parametres", label: "Paramètres" },
+        ]
+      : [
+          { href: "/locataire/dashboard", label: "Tableau de bord" },
+          { href: "/locataire/dossier", label: "Mon dossier" },
+          { href: "/locataire/visites", label: "Visites & candidatures" },
+          { href: "/locataire/paiements", label: "Paiements" },
+          { href: "/locataire/documents", label: "Documents" },
+          { href: "/locataire/parametres", label: "Paramètres" },
+        ];
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white shadow">
+    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        {/* Logo vers l'accueil */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-blue-600"
-        >
-          <span>LocaFlow</span>
+        {/* Logo / Accueil */}
+        <Link href="/" className="text-xl font-bold text-gray-900">
+          LocaFlow
         </Link>
 
-        {/* Liens principaux (simplifiés) */}
+        {/* Liens principaux */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link href="/annonces" className="hover:text-blue-600">
+          <Link href="/annonces" className="hover:text-indigo-600">
             Annonces
           </Link>
-          <Link href="/faq" className="hover:text-blue-600">
+          <Link href="/faq" className="hover:text-indigo-600">
             FAQ
           </Link>
-          <Link href="/contact" className="hover:text-blue-600">
+          <Link href="/contact" className="hover:text-indigo-600">
             Contact
           </Link>
         </nav>
 
         {/* Bouton Compte */}
         <div className="relative">
-          {/* Non connecté → simple bouton Se connecter */}
-          {!loggedIn ? (
-  <Link
-    href="/auth/login"
-    className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-  >
-    Se connecter
-  </Link>
-) : (
-            <>
-              <button
-                onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50"
-                aria-haspopup="menu"
-                aria-expanded={open}
-              >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-bold">
-                  {session?.user?.name?.charAt(0)?.toUpperCase() ?? "U"}
-                </span>
-                <span className="hidden sm:inline text-gray-800">
-                  Mon compte
-                </span>
-                <svg
-                  className={`ml-1 h-4 w-4 text-gray-500 transition-transform ${
-                    open ? "rotate-180" : ""
-                  }`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+            aria-expanded={open}
+          >
+            {/* Pastille/initiales si connecté */}
+            {status === "authenticated" ? (
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white text-xs">
+                {session?.user?.name?.[0]?.toUpperCase() ??
+                  session?.user?.email?.[0]?.toUpperCase() ??
+                  "C"}
+              </span>
+            ) : (
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-gray-700 text-xs">
+                ?
+              </span>
+            )}
+            <span>Compte</span>
+            <svg
+              className="h-4 w-4 opacity-70"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
 
-              {open && (
-                <div
-                  className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border bg-white py-2 shadow-xl"
-                  role="menu"
-                >
-                  <div className="px-4 pb-2 text-xs uppercase tracking-wide text-gray-500">
+          {/* Menu déroulant */}
+          {open && (
+            <div
+              className="absolute right-0 mt-2 w-64 rounded-xl border bg-white p-2 shadow-lg"
+              onMouseLeave={() => setOpen(false)}
+            >
+              {status !== "authenticated" ? (
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      signIn(undefined, { callbackUrl: "/" });
+                    }}
+                    className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                  >
+                    Se connecter
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="px-3 py-2 text-xs text-gray-500">
                     Connecté en{" "}
-                    <span className="font-semibold">
-                      {role === "tenant" ? "Locataire" : "Propriétaire"}
+                    <span className="font-medium text-gray-800">
+                      {role === "owner" ? "Propriétaire" : "Locataire"}
                     </span>
                   </div>
 
-                  <Link
-                    href={dashboardHref}
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                  >
-                    Tableau de bord
-                  </Link>
+                  <ul className="max-h-[60vh] space-y-1 overflow-auto p-1">
+                    {dashboardLinks.map((l) => (
+                      <li key={l.href}>
+                        <Link
+                          href={l.href}
+                          onClick={() => setOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
+                        >
+                          {l.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
 
-                  <Link
-                    href="/annonces"
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                  >
-                    Annonces
-                  </Link>
-
-                  <Link
-                    href="/compte"
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                  >
-                    Mon compte
-                  </Link>
-
-                  <button
-                    className="mt-1 block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
-                    role="menuitem"
-                    onClick={() => {
-                      setOpen(false);
-                      signOut({ callbackUrl: "/" });
-                    }}
-                  >
-                    Se déconnecter
-                  </button>
-                </div>
+                  <div className="mt-2 border-t p-2">
+                    <button
+                      onClick={() => {
+                        setOpen(false);
+                        signOut({ callbackUrl: "/" });
+                      }}
+                      className="w-full rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
+                    >
+                      Se déconnecter
+                    </button>
+                  </div>
+                </>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
