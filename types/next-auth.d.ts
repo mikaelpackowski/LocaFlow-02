@@ -1,4 +1,4 @@
-// next-auth.d.ts
+// types/next-auth.d.ts
 import NextAuth from "next-auth";
 
 declare module "next-auth" {
@@ -12,5 +12,11 @@ declare module "next-auth" {
       image?: string | null;
       role?: "owner" | "tenant";
     };
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    role?: "owner" | "tenant";
   }
 }
