@@ -1,21 +1,23 @@
+// app/(default)/auth/login/page.tsx
+import { Suspense } from "react";
 import LoginForm from "./LoginForm";
 
 export const metadata = {
   title: "Se connecter | LocaFlow",
-  description: "Accédez à votre espace propriétaire ou locataire.",
+  description: "Connexion propriétaire ou locataire à LocaFlow.",
 };
+
+// (optionnel) évite tout pré-rendu statique si tu préfères
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   return (
-    <main className="mx-auto max-w-md px-4 sm:px-6 py-24">
-      <h1 className="text-2xl font-bold text-gray-900 text-center">Connexion</h1>
-      <p className="mt-2 text-center text-gray-600">
-        Connectez-vous pour accéder à votre espace.
-      </p>
+    <main className="mx-auto max-w-md px-4 sm:px-6 py-16">
+      <h1 className="mb-6 text-center text-3xl font-bold">Se connecter</h1>
 
-      <div className="mt-6 rounded-xl border bg-white p-6 shadow-sm">
+      <Suspense fallback={<div className="text-center text-gray-500">Chargement…</div>}>
         <LoginForm />
-      </div>
+      </Suspense>
     </main>
   );
 }
