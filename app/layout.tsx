@@ -3,7 +3,7 @@ import "./css/style.css";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 
-import Providers from "@/components/Providers";
+import Providers from "@/components/providers";
 import Header from "@/components/ui/header";
 import Footer from "@/components/ui/footer";
 
