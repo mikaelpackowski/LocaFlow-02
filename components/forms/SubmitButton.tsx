@@ -1,4 +1,3 @@
-// components/forms/SubmitButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -11,7 +10,6 @@ export default function SubmitButton({
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
-
   return (
     <button
       type="submit"
