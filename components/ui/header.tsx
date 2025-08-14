@@ -31,15 +31,9 @@ export default function Header() {
 
         {/* Menu desktop */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link href="/annonces" className="hover:text-blue-600">
-            Annonces
-          </Link>
-          <Link href="/faq" className="hover:text-blue-600">
-            FAQ
-          </Link>
-          <Link href="/contact" className="hover:text-blue-600">
-            Contact
-          </Link>
+          <Link href="/annonces" className="hover:text-blue-600">Annonces</Link>
+          <Link href="/faq" className="hover:text-blue-600">FAQ</Link>
+          <Link href="/contact" className="hover:text-blue-600">Contact</Link>
 
           {/* Compte (desktop) */}
           <div className="relative">
@@ -49,13 +43,7 @@ export default function Header() {
               aria-haspopup="menu"
               aria-expanded={accountOpen}
             >
-              <svg
-                className="h-4 w-4 text-gray-700"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className="h-4 w-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-3-3.87M7 7a4 4 0 1 0 10 0 4 4 0 0 0-10 0Z" />
                 <path d="M4 21v-2a4 4 0 0 1 4-4h8" />
               </svg>
@@ -63,16 +51,11 @@ export default function Header() {
             </button>
 
             {accountOpen && (
-              <div
-                className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border bg-white shadow-lg"
-                role="menu"
-              >
-                {/* État de chargement */}
+              <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border bg-white shadow-lg" role="menu">
                 {status === "loading" && (
                   <div className="px-4 py-3 text-sm text-gray-500">Chargement…</div>
                 )}
 
-                {/* Non connecté */}
                 {!isAuth && status !== "loading" && (
                   <div className="p-2 text-sm">
                     <Link
@@ -86,7 +69,6 @@ export default function Header() {
                   </div>
                 )}
 
-                {/* Connecté */}
                 {isAuth && (
                   <>
                     <div className="px-4 py-3 text-xs text-gray-500">
@@ -94,37 +76,26 @@ export default function Header() {
                       {role ? ` · ${role === "owner" ? "Propriétaire" : "Locataire"}` : ""}
                     </div>
 
-                    {/* Liens selon rôle */}
                     {role === "owner" ? (
                       <div className="p-2 text-sm">
-                        <Link
-                          href="/proprietaire/dashboard"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/proprietaire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Tableau de bord
                         </Link>
-                        <Link
-                          href="/proprietaire/biens"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/proprietaire/biens" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Mes biens
                         </Link>
-                        <Link
-                          href="/proprietaire/biens/nouveau"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/proprietaire/biens/nouveau" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Publier un bien
                         </Link>
-                        <Link
-                          href="/proprietaire/locataires"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/proprietaire/locataires" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Locataires
                         </Link>
+
+                        {/* ✅ Nouveau : Gérer un problème */}
+                        <Link href="/proprietaire/problemes" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
+                          Gérer un problème
+                        </Link>
+
                         <button
                           onClick={() => {
                             closeAll();
@@ -137,34 +108,27 @@ export default function Header() {
                       </div>
                     ) : (
                       <div className="p-2 text-sm">
-                        <Link
-                          href="/locataire/dashboard"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/locataire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Tableau de bord
                         </Link>
-                        <Link
-                          href="/locataire/dossier"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/locataire/dossier" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Mon dossier
                         </Link>
-                        <Link
-                          href="/locataire/visites"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/locataire/visites" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Mes visites
                         </Link>
-                        <Link
-                          href="/locataire/paiements"
-                          onClick={closeAll}
-                          className="block rounded-md px-3 py-2 hover:bg-gray-50"
-                        >
+                        <Link href="/locataire/paiements" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
                           Paiements
                         </Link>
+
+                        {/* ✅ Nouveaux : Problème + Artisan */}
+                        <Link href="/locataire/probleme" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
+                          Problème dans le bien
+                        </Link>
+                        <Link href="/locataire/artisans" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
+                          Besoin d’un artisan
+                        </Link>
+
                         <button
                           onClick={() => {
                             closeAll();
@@ -190,20 +154,8 @@ export default function Header() {
           aria-label="Ouvrir/fermer le menu"
           aria-expanded={menuOpen}
         >
-          <svg
-            className="h-6 w-6 text-gray-800"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {menuOpen ? (
-              <path d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            )}
+          <svg className="h-6 w-6 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            {menuOpen ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
           </svg>
         </button>
       </div>
@@ -211,15 +163,9 @@ export default function Header() {
       {/* Menu mobile + compte */}
       {menuOpen && (
         <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
-          <Link href="/annonces" onClick={closeAll} className="block hover:text-blue-600">
-            Annonces
-          </Link>
-          <Link href="/faq" onClick={closeAll} className="block hover:text-blue-600">
-            FAQ
-          </Link>
-          <Link href="/contact" onClick={closeAll} className="block hover:text-blue-600">
-            Contact
-          </Link>
+          <Link href="/annonces" onClick={closeAll} className="block hover:text-blue-600">Annonces</Link>
+          <Link href="/faq" onClick={closeAll} className="block hover:text-blue-600">FAQ</Link>
+          <Link href="/contact" onClick={closeAll} className="block hover:text-blue-600">Contact</Link>
 
           <div className="my-2 border-t pt-3">
             {!isAuth ? (
@@ -228,18 +174,12 @@ export default function Header() {
               </Link>
             ) : role === "owner" ? (
               <>
-                <Link href="/proprietaire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Tableau de bord
-                </Link>
-                <Link href="/proprietaire/biens" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Mes biens
-                </Link>
-                <Link href="/proprietaire/biens/nouveau" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Publier un bien
-                </Link>
-                <Link href="/proprietaire/locataires" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Locataires
-                </Link>
+                <Link href="/proprietaire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Tableau de bord</Link>
+                <Link href="/proprietaire/biens" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Mes biens</Link>
+                <Link href="/proprietaire/biens/nouveau" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Publier un bien</Link>
+                <Link href="/proprietaire/locataires" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Locataires</Link>
+                {/* ✅ Mobile : Gérer un problème */}
+                <Link href="/proprietaire/problemes" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Gérer un problème</Link>
                 <button
                   onClick={() => {
                     closeAll();
@@ -252,18 +192,13 @@ export default function Header() {
               </>
             ) : (
               <>
-                <Link href="/locataire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Tableau de bord
-                </Link>
-                <Link href="/locataire/dossier" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Mon dossier
-                </Link>
-                <Link href="/locataire/visites" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Mes visites
-                </Link>
-                <Link href="/locataire/paiements" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">
-                  Paiements
-                </Link>
+                <Link href="/locataire/dashboard" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Tableau de bord</Link>
+                <Link href="/locataire/dossier" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Mon dossier</Link>
+                <Link href="/locataire/visites" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Mes visites</Link>
+                <Link href="/locataire/paiements" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Paiements</Link>
+                {/* ✅ Mobile : Problème + Artisan */}
+                <Link href="/locataire/probleme" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Problème dans le bien</Link>
+                <Link href="/locataire/artisans" onClick={closeAll} className="block rounded-md px-3 py-2 hover:bg-gray-50">Besoin d’un artisan</Link>
                 <button
                   onClick={() => {
                     closeAll();
