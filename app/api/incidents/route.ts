@@ -18,7 +18,10 @@ const IncidentSchema = z.object({
 // Convertit un FormData (submit natif <form>) en objet
 function formDataToObject(fd: FormData) {
   const obj: Record<string, any> = {};
-  for (const [k, v] of fd.entries()) obj[k] = v;
+  // ✅ évite le for...of → pas besoin de downlevelIteration
+  fd.forEach((value, key) => {
+    obj[key] = value;
+  });
   return obj;
 }
 
