@@ -6,6 +6,7 @@ import localFont from "next/font/local";
 import Providers from "@/components/providers";
 import Header from "@/components/ui/header";
 import Footer from "@/components/ui/footer";
+import { SITE_NAME, SITE_TAGLINE } from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,8 +26,8 @@ const nacelle = localFont({
 });
 
 export const metadata = {
-  title: "LocaFlow - Simplifiez votre gestion locative",
-  description: "Plateforme intelligente pour propriétaires, locataires et agences.",
+  title: `${SITE_NAME} – Simplifiez votre gestion locative`,
+  description: SITE_TAGLINE,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
