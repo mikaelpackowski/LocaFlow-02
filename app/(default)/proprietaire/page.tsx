@@ -1,7 +1,7 @@
 // app/(default)/proprietaire/page.tsx
 
 export const metadata = {
-  title: "Services pour propriétaires | LocaFlow",
+  title: "Services pour propriétaires | ForGesty",
   description:
     "Déposez vos biens, suivez vos paiements et automatisez vos démarches avec LocaFlow.",
 };
