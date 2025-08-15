@@ -2,7 +2,7 @@
 import TenantSidebar from "@/components/tenant/TenantSidebar";
 
 export const metadata = {
-  title: "Dashboard locataire | LocaFlow",
+  title: "Dashboard locataire | ForGesty",
   description:
     "Votre espace locataire : dossier, visites, candidatures et paiements.",
 };
