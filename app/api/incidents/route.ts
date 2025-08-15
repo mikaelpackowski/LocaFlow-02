@@ -3,7 +3,6 @@ import { z } from "zod";
 import { resend, FROM_EMAIL, FALLBACK_TO } from "@/lib/resend";
 import { ownerIncidentHtml } from "@/lib/email-templates";
 
-// Schema de validation (robuste & typé)
 const IncidentSchema = z.object({
   role: z.enum(["tenant", "owner"]),
   propertyTitle: z.string().optional(),
@@ -13,30 +12,77 @@ const IncidentSchema = z.object({
   contactName: z.string().min(2, "Nom requis"),
   contactEmail: z.string().email("Email invalide"),
   contactPhone: z.string().optional(),
-  // optionnel: si tu l’envoies depuis le formulaire
   ownerEmail: z.string().email().optional(),
 });
 
+// Convertit un FormData (submit natif <form>) en objet
+function formDataToObject(fd: FormData) {
+  const obj: Record<string, any> = {};
+  for (const [k, v] of fd.entries()) obj[k] = v;
+  return obj;
+}
+
 export async function POST(req: Request) {
   try {
-    const json = await req.json();
-    const data = IncidentSchema.parse(json);
+    // 1) Lire le body quelle que soit la méthode d’envoi
+    const contentType = req.headers.get("content-type") || "";
+    let raw: any;
 
-    // Cible: ownerEmail fourni OU fallback env
-    const to = data.ownerEmail || FALLBACK_TO;
-    if (!to) {
+    if (contentType.includes("application/json")) {
+      raw = await req.json();
+    } else if (contentType.includes("form")) {
+      const fd = await req.formData();
+      raw = formDataToObject(fd);
+    } else {
       return NextResponse.json(
-        { ok: false, error: "Aucun destinataire défini (ownerEmail manquant et ALERTS_FALLBACK_TO vide)" },
+        { ok: false, error: `Content-Type non supporté: ${contentType}` },
         { status: 400 }
       );
     }
 
+    // 2) Validation Zod
+    const parsed = IncidentSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, errors: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+    const data = parsed.data;
+
+    // 3) Vérifs env
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json(
+        { ok: false, error: "RESEND_API_KEY manquant coté serveur" },
+        { status: 500 }
+      );
+    }
+    if (!FROM_EMAIL) {
+      return NextResponse.json(
+        { ok: false, error: "ALERTS_FROM_EMAIL manquant" },
+        { status: 500 }
+      );
+    }
+
+    // 4) Destinataire
+    const to = data.ownerEmail || FALLBACK_TO;
+    if (!to) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Aucun destinataire défini (ownerEmail manquant et ALERTS_FALLBACK_TO vide)",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 5) Envoi
     const subject =
       data.role === "tenant"
         ? `LocaFlow — Nouveau problème signalé${data.propertyTitle ? ` · ${data.propertyTitle}` : ""}`
         : `LocaFlow — Nouveau ticket propriétaire${data.propertyTitle ? ` · ${data.propertyTitle}` : ""}`;
 
-    // Envoi email
     const res = await resend.emails.send({
       from: FROM_EMAIL,
       to,
@@ -54,16 +100,20 @@ export async function POST(req: Request) {
     });
 
     if (res.error) {
-      return NextResponse.json({ ok: false, error: String(res.error) }, { status: 500 });
+      // On renvoie l’erreur Resend lisible
+      return NextResponse.json(
+        { ok: false, error: String((res.error as any)?.message || res.error) },
+        { status: 502 }
+      );
     }
 
-    // (Optionnel) renvoyer un ID de ticket si tu en crées un plus tard
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    if (err?.issues) {
-      // Erreurs Zod
-      return NextResponse.json({ ok: false, errors: err.issues }, { status: 400 });
-    }
-    return NextResponse.json({ ok: false, error: err?.message || "Erreur serveur" }, { status: 500 });
+    // Log côté serveur pour Vercel logs
+    console.error("API /api/incidents error:", err);
+    return NextResponse.json(
+      { ok: false, error: err?.message || "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
