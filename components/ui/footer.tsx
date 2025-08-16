@@ -9,8 +9,6 @@ export default function Footer() {
           </div>
 
           <nav className="space-x-4 text-sm">
-            <a href="#proprietaire" className="hover:underline">Propriétaire</a>
-            <a href="#locataire" className="hover:underline">Locataire</a>
             <a href="#annonces" className="hover:underline">Annonces</a>
             <a href="#faq" className="hover:underline">FAQ</a>
             <a href="#contact" className="hover:underline">Contact</a>
