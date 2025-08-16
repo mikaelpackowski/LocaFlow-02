@@ -25,7 +25,7 @@ export default function Features() {
               Automatisez vos tâches, gagnez du temps, et concentrez-vous sur l’essentiel
             </h2>
             <p className="text-lg text-gray-600">
-              Grâce à une interface simple et intuitive, LocaFlow permet aux propriétaires de gérer leur location avec efficacité.
+              Grâce à une interface simple et intuitive, ForGesty permet aux propriétaires de gérer leur location avec efficacité.
             </p>
           </div>
 
