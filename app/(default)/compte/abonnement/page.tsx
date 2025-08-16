@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import Link from "next/link";
 import dayjs from "dayjs";
+import type Stripe from "stripe"; // ✅ ajoute les types Stripe uniquement
 
 const PRICE = {
   proprietaire: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROPRIETAIRE, // 14 €
   premium: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM,           // 29 €
   business: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS,         // 79 €
-};
+} as const;
 
 export const metadata = {
   title: "Mon abonnement – ForGesty",
@@ -39,7 +40,12 @@ export default async function AbonnementPage() {
   // Stripe: retrouver le customer et son abonnement (si existant)
   const { subscription, customer } = await getStripeSubscription(session.user.email);
 
-  const planName = subscription?.items.data[0]?.price?.nickname ?? mapPriceToLabel(subscription?.items.data[0]?.price?.id);
+  const currentItem = subscription?.items.data[0];
+  const planName =
+    currentItem?.price?.nickname ??
+    mapPriceToLabel(currentItem?.price?.id) ??
+    "—";
+
   const status = subscription?.status ?? "aucun";
   const periodEnd = subscription?.current_period_end
     ? dayjs.unix(subscription.current_period_end).format("DD/MM/YYYY")
@@ -57,14 +63,12 @@ export default async function AbonnementPage() {
 
         {subscription ? (
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Info label="Offre" value={planName || "—"} />
+            <Info label="Offre" value={planName} />
             <Info label="Statut" value={statusLabel(status)} />
             <Info label="Prochaine échéance" value={periodEnd ?? "—"} />
           </div>
         ) : (
-          <p className="mt-2 text-gray-600">
-            Aucun abonnement actif pour le moment.
-          </p>
+          <p className="mt-2 text-gray-600">Aucun abonnement actif pour le moment.</p>
         )}
 
         <div className="mt-6 flex flex-wrap gap-3">
