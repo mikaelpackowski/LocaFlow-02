@@ -1,19 +1,16 @@
-// app/api/billing/portal/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ⚠️ ici il faudrait idéalement retrouver le customer Stripe lié à l’utilisateur
-    // via ta DB (Prisma : user.stripeCustomerId). Pour la démo, on crée un customer
-    // “temporaire” avec l’email si besoin.
+    // Idéalement: retrouver customerId dans ta DB (user.stripeCustomerId)
     const customers = await stripe.customers.list({ email: session.user.email, limit: 1 });
     const customer =
       customers.data[0] ??
