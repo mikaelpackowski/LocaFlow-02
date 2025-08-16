@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div>
-            <h2 className="text-xl font-semibold">LocaFlow</h2>
+            <h2 className="text-xl font-semibold">ForGesty</h2>
             <p className="text-sm">Simplifiez votre gestion locative.</p>
           </div>
 
@@ -18,7 +18,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-6 text-xs text-center text-gray-500">
-          © 2025 LocaFlow. Tous droits réservés.
+          © 2025 ForGesty. Tous droits réservés.
         </div>
       </div>
     </footer>
