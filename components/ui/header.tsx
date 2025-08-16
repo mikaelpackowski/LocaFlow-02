@@ -22,7 +22,7 @@ export default function Header() {
           href="/"
           className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-blue-600"
         >
-          <span>LocaFlow</span>
+          <span>Forgesty</span>
         </Link>
 
         {/* Liens simples (desktop) */}
