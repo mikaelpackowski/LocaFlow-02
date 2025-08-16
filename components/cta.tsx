@@ -37,7 +37,7 @@ export default function Cta() {
               data-aos="fade-up"
               data-aos-delay={200}
             >
-              Rejoignez LocaFlow et automatisez vos démarches en quelques clics.
+              Rejoignez ForGesty et automatisez vos démarches en quelques clics.
             </p>
 
             {/* Boutons — même style que "Propriétaire" */}
