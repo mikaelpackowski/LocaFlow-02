@@ -29,7 +29,7 @@ const testimonials = [
     name: "MaKayla P.",
     company: "Disney",
     content:
-      "Grâce à LocaFlow, je peux gérer mes biens locatifs sans effort. C’est rapide, clair, et parfaitement adapté à mes besoins de propriétaire.",
+      "Grâce à ForGesty, je peux gérer mes biens locatifs sans effort. C’est rapide, clair, et parfaitement adapté à mes besoins de propriétaire.",
     categories: [1, 3, 5],
   },
   {
@@ -47,14 +47,14 @@ const testimonials = [
     name: "Lucy D.",
     company: "Rio",
     content:
-      "LocaFlow m’a permis de tout centraliser. Fini les fichiers Excel ! Je suis sereine pour mes locations.",
+      "ForGesty m’a permis de tout centraliser. Fini les fichiers Excel ! Je suis sereine pour mes locations.",
     categories: [1, 2, 5],
   },
 ];
 
 export default function Testimonials() {
   const masonryContainer = useMasonry();
-  const [category] = useState<number>(1); // On désactive les filtres pour LocaFlow
+  const [category] = useState<number>(1); // On désactive les filtres pour ForGesty
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
