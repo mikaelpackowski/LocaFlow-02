@@ -13,11 +13,11 @@ export default function Workflows() {
           </div>
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-              Comment fonctionne LocaFlow
+              Comment fonctionne Forgesty
             </span>
           </h2>
           <p className="mt-3 text-lg text-gray-600">
-            LocaFlow automatise les démarches pour vous faire gagner du temps, sans négliger vos priorités de gestion.
+            ForGesty automatise les démarches pour vous faire gagner du temps, sans négliger vos priorités de gestion.
           </p>
         </div>
 
