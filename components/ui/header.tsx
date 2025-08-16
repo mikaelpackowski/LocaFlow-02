@@ -1,137 +1,202 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-
-type Role = "owner" | "tenant" | undefined;
 
 export default function Header() {
   const { data: session } = useSession();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
-  // fermer dropdown si clic à l’extérieur
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
-  const role = (session?.user as any)?.role as Role;
+  const isOwner = session?.user?.role === "owner";
+  const isTenant = session?.user?.role === "tenant";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Logo à gauche */}
-        <Link
-          href="/"
-          className="text-lg font-bold tracking-tight text-gray-900 hover:opacity-90"
-        >
+    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+        {/* Logo => accueil */}
+        <Link href="/" className="text-xl font-bold text-gray-900">
           ForGesty
         </Link>
 
-        {/* Nav + Compte à droite */}
-        <div className="flex items-center gap-6">
-          <nav className="hidden items-center gap-6 text-sm md:flex">
-            <Link href="/annonces" className="text-gray-700 hover:text-indigo-600">Annonces</Link>
-            <Link href="/faq" className="text-gray-700 hover:text-indigo-600">FAQ</Link>
-            <Link href="/contact" className="text-gray-700 hover:text-indigo-600">Contact</Link>
-          </nav>
+        {/* Nav desktop */}
+        <nav className="hidden items-center gap-6 text-sm md:flex">
+          <Link href="/annonces" className="hover:text-violet-600">
+            Annonces
+          </Link>
+          <Link href="/tarifs" className="hover:text-violet-600">
+            Tarifs
+          </Link>
+          <Link href="/faq" className="hover:text-violet-600">
+            FAQ
+          </Link>
+          <Link href="/contact" className="hover:text-violet-600">
+            Contact
+          </Link>
 
-          {/* Compte */}
-          <div className="relative" ref={menuRef}>
-            {!session?.user ? (
-              <Link
-                href="/auth/login"
-                className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+          {/* Espace à droite : Compte */}
+          {!session ? (
+            <Link
+              href="/auth/login"
+              className="rounded-full bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500"
+            >
+              Se connecter
+            </Link>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setAccountOpen((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-2 hover:bg-gray-50"
               >
-                Se connecter
-              </Link>
-            ) : (
-              <>
-                <button
-                  onClick={() => setOpen((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm hover:bg-gray-50"
-                  aria-haspopup="menu"
-                  aria-expanded={open}
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+                  {session.user?.name?.[0]?.toUpperCase() ?? "U"}
+                </span>
+                Compte
+                <svg
+                  className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
                 >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white">
-                    {(session.user.name?.[0] || "U").toUpperCase()}
-                  </span>
-                  Compte
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="opacity-70">
-                    <path d="M5 7l5 5 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </button>
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.17l3.71-2.94a.75.75 0 0 1 .94 1.17l-4.24 3.36a.75.75 0 0 1-.94 0L5.21 8.4a.75.75 0 0 1 .02-1.19Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
 
-                {open && (
-                  <div
-                    role="menu"
-                    className="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border bg-white shadow-lg"
-                  >
-                    <div className="px-4 py-3 border-b">
-                      <p className="text-sm text-gray-500">Connecté en tant que</p>
-                      <p className="truncate text-sm font-medium text-gray-900">
-                        {session.user.email || session.user.name || "Utilisateur"}
-                      </p>
-                    </div>
-
-                    <div className="py-1 text-sm">
-                      {role === "tenant" && (
-                        <>
-                          <Link href="/locataire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
-                            Tableau de bord locataire
-                          </Link>
-                          <Link href="/locataire/probleme" className="block px-4 py-2 hover:bg-gray-50">
-                            Signaler un problème
-                          </Link>
-                          <Link href="/locataire/visites" className="block px-4 py-2 hover:bg-gray-50">
-                            Mes visites
-                          </Link>
-                          <Link href="/locataire/paiements" className="block px-4 py-2 hover:bg-gray-50">
-                            Mes paiements
-                          </Link>
-                        </>
-                      )}
-
-                      {role === "owner" && (
-                        <>
-                          <Link href="/proprietaire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
-                            Tableau de bord propriétaire
-                          </Link>
-                          <Link href="/proprietaire/problemes" className="block px-4 py-2 hover:bg-gray-50">
-                            Gérer un problème
-                          </Link>
-                          <Link href="/proprietaire/annonces" className="block px-4 py-2 hover:bg-gray-50">
-                            Mes annonces
-                          </Link>
-                        </>
-                      )}
-
-                      <Link href="/compte" className="block px-4 py-2 hover:bg-gray-50">
-                        Mon compte
-                      </Link>
-                    </div>
-
-                    <div className="border-t p-2">
-                      <button
-                        onClick={() => signOut({ callbackUrl: "/" })}
-                        className="w-full rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium hover:bg-gray-200"
-                      >
-                        Se déconnecter
-                      </button>
-                    </div>
+              {accountOpen && (
+                <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border bg-white shadow-lg">
+                  <div className="px-4 py-3 text-sm">
+                    <p className="font-semibold text-gray-900">
+                      {session.user?.name ?? session.user?.email}
+                    </p>
+                    <p className="text-gray-500">{session.user?.role ?? "Utilisateur"}</p>
                   </div>
-                )}
-              </>
+                  <div className="border-t" />
+
+                  {/* Liens dynamiques */}
+                  <div className="py-1 text-sm">
+                    {isOwner && (
+                      <>
+                        <Link href="/proprietaire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
+                          Tableau de bord propriétaire
+                        </Link>
+                        <Link href="/proprietaire/problemes" className="block px-4 py-2 hover:bg-gray-50">
+                          Gérer un problème
+                        </Link>
+                      </>
+                    )}
+                    {isTenant && (
+                      <>
+                        <Link href="/locataire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
+                          Tableau de bord locataire
+                        </Link>
+                        <Link href="/locataire/probleme" className="block px-4 py-2 hover:bg-gray-50">
+                          Signaler un problème
+                        </Link>
+                      </>
+                    )}
+                    <Link href="/profil" className="block px-4 py-2 hover:bg-gray-50">
+                      Mon profil
+                    </Link>
+                  </div>
+
+                  <div className="border-t" />
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
+                  >
+                    Se déconnecter
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </nav>
+
+        {/* Burger */}
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="rounded md:hidden focus:outline-none focus:ring-2 focus:ring-violet-500"
+          aria-label="Ouvrir/fermer le menu"
+          aria-expanded={menuOpen}
+        >
+          <svg className="h-6 w-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2"
+            viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            {menuOpen ? (
+              <path d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path d="M4 6h16M4 12h16M4 18h16" />
             )}
-          </div>
-        </div>
+          </svg>
+        </button>
       </div>
+
+      {/* Menu mobile */}
+      {menuOpen && (
+        <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
+          <Link href="/annonces" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+            Annonces
+          </Link>
+          <Link href="/tarifs" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+            Tarifs
+          </Link>
+          <Link href="/faq" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+            FAQ
+          </Link>
+          <Link href="/contact" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+            Contact
+          </Link>
+
+          {!session ? (
+            <Link
+              href="/auth/login"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500"
+              onClick={() => setMenuOpen(false)}
+            >
+              Se connecter
+            </Link>
+          ) : (
+            <>
+              {isOwner && (
+                <>
+                  <Link href="/proprietaire/dashboard" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+                    Tableau de bord propriétaire
+                  </Link>
+                  <Link href="/proprietaire/problemes" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+                    Gérer un problème
+                  </Link>
+                </>
+              )}
+              {isTenant && (
+                <>
+                  <Link href="/locataire/dashboard" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+                    Tableau de bord locataire
+                  </Link>
+                  <Link href="/locataire/probleme" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+                    Signaler un problème
+                  </Link>
+                </>
+              )}
+              <Link href="/profil" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+                Mon profil
+              </Link>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+                className="mt-2 w-full rounded-full border px-4 py-2 text-left hover:bg-gray-50"
+              >
+                Se déconnecter
+              </button>
+            </>
+          )}
+        </nav>
+      )}
     </header>
   );
 }
