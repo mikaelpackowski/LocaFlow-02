@@ -62,7 +62,7 @@ export default function Testimonials() {
         {/* Section header */}
         <div className="mx-auto max-w-3xl pb-12 text-center">
           <h2 className="animate-[gradient_6s_linear_infinite] bg-[linear-gradient(to_right,#4f46e5,#8b5cf6,#ec4899,#4f46e5)] bg-[length:200%_auto] bg-clip-text pb-4 font-nacelle text-3xl font-semibold text-transparent md:text-4xl">
-            Ils utilisent déjà LocaFlow
+            Ils utilisent déjà ForGesty
           </h2>
           <p className="text-lg text-gray-600">
             Propriétaires, agences et locataires témoignent de leur expérience.
