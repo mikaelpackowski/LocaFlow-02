@@ -1,5 +1,9 @@
+// lib/stripe.ts
 import Stripe from "stripe";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia", // ou l’API la plus récente supportée
+  // Soit tu fixes une version officiellement supportée :
+  apiVersion: "2024-06-20",
+  // Soit tu supprimes apiVersion pour utiliser celle par défaut de ton compte :
+  // apiVersion: undefined,
 });
