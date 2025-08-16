@@ -1,4 +1,3 @@
-// app/api/billing/checkout/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -12,7 +11,6 @@ export async function POST(req: Request) {
     }
 
     const { priceId, mode = "subscription", successUrl, cancelUrl } = await req.json();
-
     if (!priceId) {
       return NextResponse.json({ error: "Missing priceId" }, { status: 400 });
     }
