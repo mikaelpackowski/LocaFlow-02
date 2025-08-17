@@ -6,6 +6,9 @@ import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import Stripe from "stripe";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 async function baseUrl() {
   const h = await headers();
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -17,29 +20,43 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "Non authentifié." }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, error: "Non authentifié." },
+        { status: 401 }
+      );
     }
 
-    // 1) Retrouver (ou créer) le customer Stripe à partir de l'email
     const email = session.user.email;
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    let customer: Stripe.Customer | null = customers.data[0] ?? null;
+
+    // 1) Retrouver (ou créer) le customer Stripe via l'email
+    const existing = await stripe.customers.list({ email, limit: 1 });
+    let customer: Stripe.Customer | null = existing.data[0] ?? null;
 
     if (!customer) {
-      // Option: créer le customer si inexistant
-      customer = await stripe.customers.create({ email, name: session.user.name ?? undefined });
+      customer = await stripe.customers.create({
+        email,
+        name: session.user.name ?? undefined,
+        metadata: {
+          app_user_email: email,
+        },
+      });
     }
 
-    const returnUrl = `${await baseUrl()}/compte/abonnement`;
-
-    // 2) Créer une session Portail client
-    const portalSession = await stripe.billingPortal.sessions.create({
+    // 2) Créer la session du portail
+    const portal = await stripe.billingPortal.sessions.create({
       customer: customer.id,
-      return_url: returnUrl,
+      return_url: `${await baseUrl()}/compte/abonnement`,
+      // optionnel : limiter/autoriser des fonctionnalités du portail
+      // flow_data: { after_completion: { type: "redirect", redirect: { return_url: "..." } } },
     });
 
-    return NextResponse.redirect(portalSession.url, { status: 303 });
+    // 3) Redirection 303 vers le portail
+    return NextResponse.redirect(portal.url, { status: 303 });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message || "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
+
