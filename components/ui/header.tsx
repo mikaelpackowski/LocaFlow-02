@@ -1,92 +1,96 @@
-// app/(default)/profil/page.tsx
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import { useState } from "react";
 
-export const metadata = {
-  title: "Mon profil – ForGesty",
-  description: "Consultez et gérez les informations de votre compte.",
-};
-
-export default async function ProfilPage() {
-  const session = await getServerSession(authOptions);
-
-  // Si pas connecté → redirige vers login avec callback
-  if (!session?.user?.email) {
-    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/profil")}`);
-  }
-
-  // À partir d’ici, session et user sont définis
-  const user = session.user!;
-  const role = (user as any).role ?? "Utilisateur";
-
-  // Routing dashboard selon le rôle
-  const dashboardPath =
-    role === "owner"
-      ? "/proprietaire/dashboard"
-      : role === "tenant"
-      ? "/locataire/dashboard"
-      : null;
+export default function Header() {
+  const { data: session } = useSession();
+  const [open, setOpen] = useState(false);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-28 pb-16 space-y-8">
-      <header>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mon profil</h1>
-        <p className="mt-1 text-gray-600">Gérez vos informations personnelles.</p>
-      </header>
+    <header className="flex items-center justify-between px-6 py-4 border-b bg-white">
+      {/* Logo */}
+      <Link href="/" className="text-lg font-bold text-gray-900">
+        ForGesty
+      </Link>
 
-      <section className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Informations</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Ces informations proviennent de votre compte.
-            </p>
-          </div>
-          {/* Badge rôle */}
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-            {role}
-          </span>
-        </div>
+      {/* Navigation principale */}
+      <nav className="hidden md:flex items-center gap-6">
+        <Link href="/annonces" className="text-gray-700 hover:text-gray-900">Annonces</Link>
+        <Link href="/tarifs" className="text-gray-700 hover:text-gray-900">Tarifs</Link>
+        <Link href="/faq" className="text-gray-700 hover:text-gray-900">FAQ</Link>
+        <Link href="/contact" className="text-gray-700 hover:text-gray-900">Contact</Link>
+      </nav>
 
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border p-4">
-            <dt className="text-xs uppercase tracking-wide text-gray-500">Nom</dt>
-            <dd className="mt-1 font-medium text-gray-900">{user.name ?? "—"}</dd>
-          </div>
-          <div className="rounded-lg border p-4">
-            <dt className="text-xs uppercase tracking-wide text-gray-500">Email</dt>
-            <dd className="mt-1 font-medium text-gray-900">{user.email}</dd>
-          </div>
-        </dl>
-
-        <div className="flex flex-wrap gap-3">
-          {/* Bouton dashboard selon le rôle */}
-          {dashboardPath && (
-            <Link
-              href={dashboardPath}
-              className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+      {/* Menu utilisateur */}
+      <div className="relative">
+        {session ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setOpen(!open)}
+              className="flex items-center gap-2 rounded-full bg-purple-600 text-white px-3 py-1 text-sm font-medium hover:bg-purple-500"
             >
-              Tableau de bord
-            </Link>
-          )}
+              {session.user?.name?.charAt(0) || "U"}
+              <span>Compte</span>
+              <span className="ml-1">▾</span>
+            </button>
 
-          <Link
-            href="/compte/abonnement"
-            className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
-          >
-            Abonnement & factures
-          </Link>
+            {open && (
+              <div className="absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                <div className="px-4 py-3 border-b">
+                  <p className="text-sm font-medium text-gray-900">
+                    {session.user?.name || "Démonstration"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {session.user?.email || "utilisateur@example.com"}
+                  </p>
+                </div>
 
+                <div className="py-1">
+                  {/* 👉 Nouveau bouton Dashboard */}
+                  <Link
+                    href="/proprietaire/dashboard"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Tableau de bord
+                  </Link>
+
+                  <Link
+                    href="/compte/abonnement"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Abonnement & factures
+                  </Link>
+
+                  <Link
+                    href="/profil"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Mon profil
+                  </Link>
+                </div>
+
+                <div className="border-t py-1">
+                  <button
+                    onClick={() => signOut()}
+                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Se déconnecter
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
           <Link
-            href="/auth/change-password"
-            className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
+            href="/auth/login"
+            className="rounded-full bg-purple-600 px-4 py-2 text-white text-sm font-medium hover:bg-purple-500"
           >
-            Changer mon mot de passe
+            Se connecter
           </Link>
-        </div>
-      </section>
-    </main>
+        )}
+      </div>
+    </header>
   );
 }
