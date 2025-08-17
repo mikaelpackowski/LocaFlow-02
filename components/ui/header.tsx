@@ -9,8 +9,16 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
-  const isOwner = session?.user?.role === "owner";
-  const isTenant = session?.user?.role === "tenant";
+  const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
+  const dashboardPath =
+    role === "owner" ? "/proprietaire/dashboard"
+    : role === "tenant" ? "/locataire/dashboard"
+    : undefined;
+
+  function closeAll() {
+    setMenuOpen(false);
+    setAccountOpen(false);
+  }
 
   return (
     <header
@@ -20,24 +28,16 @@ export default function Header() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         {/* Logo => accueil */}
-        <Link href="/" className="text-xl font-bold text-gray-900">
+        <Link href="/" className="text-xl font-bold text-gray-900" onClick={closeAll}>
           ForGesty
         </Link>
 
         {/* Nav desktop */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link href="/annonces" className="hover:text-violet-600">
-            Annonces
-          </Link>
-          <Link href="/tarifs" className="hover:text-violet-600">
-            Tarifs
-          </Link>
-          <Link href="/faq" className="hover:text-violet-600">
-            FAQ
-          </Link>
-          <Link href="/contact" className="hover:text-violet-600">
-            Contact
-          </Link>
+          <Link href="/annonces" className="hover:text-violet-600">Annonces</Link>
+          <Link href="/tarifs" className="hover:text-violet-600">Tarifs</Link>
+          <Link href="/faq" className="hover:text-violet-600">FAQ</Link>
+          <Link href="/contact" className="hover:text-violet-600">Contact</Link>
 
           {/* Espace à droite : Compte */}
           {!session ? (
@@ -52,6 +52,8 @@ export default function Header() {
               <button
                 onClick={() => setAccountOpen((v) => !v)}
                 className="inline-flex items-center gap-2 rounded-full border px-3 py-2 hover:bg-gray-50"
+                aria-haspopup="menu"
+                aria-expanded={accountOpen}
               >
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
                   {session.user?.name?.[0]?.toUpperCase() ?? "U"}
@@ -72,45 +74,53 @@ export default function Header() {
               </button>
 
               {accountOpen && (
-                <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border bg-white shadow-lg">
+                <div
+                  className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border bg-white shadow-lg"
+                  role="menu"
+                >
                   <div className="px-4 py-3 text-sm">
                     <p className="font-semibold text-gray-900">
                       {session.user?.name ?? session.user?.email}
                     </p>
-                    <p className="text-gray-500">{session.user?.role ?? "Utilisateur"}</p>
+                    <p className="text-gray-500">{role ?? "Utilisateur"}</p>
                   </div>
                   <div className="border-t" />
 
-                  {/* Liens dynamiques */}
                   <div className="py-1 text-sm">
-                    {isOwner && (
-                      <>
-                        <Link href="/proprietaire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
-                          Tableau de bord propriétaire
-                        </Link>
-                        <Link href="/proprietaire/problemes" className="block px-4 py-2 hover:bg-gray-50">
-                          Gérer un problème
-                        </Link>
-                      </>
+                    {/* Tableau de bord selon le rôle */}
+                    {dashboardPath && (
+                      <Link
+                        href={dashboardPath}
+                        className="block px-4 py-2 hover:bg-gray-50"
+                        onClick={closeAll}
+                      >
+                        Tableau de bord
+                      </Link>
                     )}
-                    {isTenant && (
-                      <>
-                        <Link href="/locataire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
-                          Tableau de bord locataire
-                        </Link>
-                        <Link href="/locataire/probleme" className="block px-4 py-2 hover:bg-gray-50">
-                          Signaler un problème
-                        </Link>
-                      </>
-                    )}
-                    <Link href="/profil" className="block px-4 py-2 hover:bg-gray-50">
+
+                    <Link
+                      href="/compte/abonnement"
+                      className="block px-4 py-2 hover:bg-gray-50"
+                      onClick={closeAll}
+                    >
+                      Abonnement & factures
+                    </Link>
+
+                    <Link
+                      href="/profil"
+                      className="block px-4 py-2 hover:bg-gray-50"
+                      onClick={closeAll}
+                    >
                       Mon profil
                     </Link>
                   </div>
 
                   <div className="border-t" />
                   <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={() => {
+                      closeAll();
+                      signOut({ callbackUrl: "/" });
+                    }}
                     className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
                   >
                     Se déconnecter
@@ -149,16 +159,16 @@ export default function Header() {
       {/* Menu mobile */}
       {menuOpen && (
         <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
-          <Link href="/annonces" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+          <Link href="/annonces" className="block hover:text-violet-600" onClick={closeAll}>
             Annonces
           </Link>
-          <Link href="/tarifs" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+          <Link href="/tarifs" className="block hover:text-violet-600" onClick={closeAll}>
             Tarifs
           </Link>
-          <Link href="/faq" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+          <Link href="/faq" className="block hover:text-violet-600" onClick={closeAll}>
             FAQ
           </Link>
-          <Link href="/contact" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+          <Link href="/contact" className="block hover:text-violet-600" onClick={closeAll}>
             Contact
           </Link>
 
@@ -166,38 +176,42 @@ export default function Header() {
             <Link
               href="/auth/login"
               className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500"
-              onClick={() => setMenuOpen(false)}
+              onClick={closeAll}
             >
               Se connecter
             </Link>
           ) : (
             <>
-              {isOwner && (
-                <>
-                  <Link href="/proprietaire/dashboard" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
-                    Tableau de bord propriétaire
-                  </Link>
-                  <Link href="/proprietaire/problemes" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
-                    Gérer un problème
-                  </Link>
-                </>
+              {/* Tableau de bord (mobile) */}
+              {dashboardPath && (
+                <Link
+                  href={dashboardPath}
+                  className="block hover:text-violet-600"
+                  onClick={closeAll}
+                >
+                  Tableau de bord
+                </Link>
               )}
-              {isTenant && (
-                <>
-                  <Link href="/locataire/dashboard" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
-                    Tableau de bord locataire
-                  </Link>
-                  <Link href="/locataire/probleme" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
-                    Signaler un problème
-                  </Link>
-                </>
-              )}
-              <Link href="/profil" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
+
+              <Link
+                href="/compte/abonnement"
+                className="block hover:text-violet-600"
+                onClick={closeAll}
+              >
+                Abonnement & factures
+              </Link>
+
+              <Link
+                href="/profil"
+                className="block hover:text-violet-600"
+                onClick={closeAll}
+              >
                 Mon profil
               </Link>
+
               <button
                 onClick={() => {
-                  setMenuOpen(false);
+                  closeAll();
                   signOut({ callbackUrl: "/" });
                 }}
                 className="mt-2 w-full rounded-full border px-4 py-2 text-left hover:bg-gray-50"
