@@ -1,4 +1,3 @@
-// app/api/billing/portal/route.ts
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
@@ -16,47 +15,46 @@ async function baseUrl() {
   return `${proto}://${host}`;
 }
 
-export async function GET() {
+export async function POST() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { ok: false, error: "Non authentifié." },
-        { status: 401 }
-      );
+    const email = session?.user?.email;
+    if (!email) {
+      return NextResponse.json({ ok: false, error: "Non authentifié." }, { status: 401 });
     }
 
-    const email = session.user.email;
-
-    // 1) Retrouver (ou créer) le customer Stripe via l'email
+    // 1) Retrouver (ou créer) le customer Stripe par email
     const existing = await stripe.customers.list({ email, limit: 1 });
     let customer: Stripe.Customer | null = existing.data[0] ?? null;
 
     if (!customer) {
       customer = await stripe.customers.create({
         email,
-        name: session.user.name ?? undefined,
-        metadata: {
-          app_user_email: email,
-        },
+        name: session.user?.name ?? undefined,
+        metadata: { app_user_email: email },
       });
     }
 
-    // 2) Créer la session du portail
+    // (Optionnel) pointer une configuration spécifique du portail
+    const configuration = process.env.STRIPE_PORTAL_CONFIGURATION_ID || undefined;
+
+    // 2) Créer la session de portail
     const portal = await stripe.billingPortal.sessions.create({
       customer: customer.id,
       return_url: `${await baseUrl()}/compte/abonnement`,
-      // optionnel : limiter/autoriser des fonctionnalités du portail
-      // flow_data: { after_completion: { type: "redirect", redirect: { return_url: "..." } } },
+      configuration, // si non défini, Stripe utilise la config par défaut (doit exister en mode test)
     });
 
-    // 3) Redirection 303 vers le portail
-    return NextResponse.redirect(portal.url, { status: 303 });
+    return NextResponse.json({ ok: true, url: portal.url });
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: e?.message || "Erreur serveur" },
+      {
+        ok: false,
+        error:
+          e?.message ||
+          "Erreur serveur. Assure-toi d’avoir enregistré la configuration du portail en mode test dans Stripe.",
+      },
       { status: 500 }
     );
   }
 }
-
