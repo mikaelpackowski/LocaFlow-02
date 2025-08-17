@@ -13,7 +13,11 @@ export default function Header() {
   const isTenant = session?.user?.role === "tenant";
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
+    <header
+      id="site-header"
+      className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur md:h-16"
+      role="banner"
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         {/* Logo => accueil */}
         <Link href="/" className="text-xl font-bold text-gray-900">
@@ -124,8 +128,15 @@ export default function Header() {
           aria-label="Ouvrir/fermer le menu"
           aria-expanded={menuOpen}
         >
-          <svg className="h-6 w-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2"
-            viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="h-6 w-6 text-gray-900"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             {menuOpen ? (
               <path d="M6 18L18 6M6 6l12 12" />
             ) : (
