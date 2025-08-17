@@ -57,37 +57,52 @@ export default async function TarifsPage() {
             cta={registerLink(undefined, "Choisir")}
           />
 
-          {/* Propriétaire 14 € — Populaire */}
-          <PlanCard
-            title="Propriétaire"
-            price="14 €"
-            sub="/mois"
-            badge="Populaire"
-            highlighted
-            features={[
-              "Jusqu'à 5 biens",
-              "Quittances automatiques",
-              "Paiement en ligne",
-              "Aide IA intégrée",
-              "Support standard",
-            ]}
-            cta={registerLink(PRICE.proprietaire, "Choisir")}
-          />
+       /* Propriétaire 14 € — Populaire */
+<PlanCard
+  title="Propriétaire"
+  price="14 €"
+  sub="/mois"
+  badge="Populaire"
+  highlighted
+  features={[
+    "Jusqu'à 5 biens",
+    "Quittances automatiques",
+    "Paiement en ligne",
+    "Aide IA intégrée",
+    "Support standard",
+  ]}
+  cta={registerLink("proprietaire", "Choisir")}   // ⬅️ ICI
+/>
 
-          {/* Premium 29 € */}
-          <PlanCard
-            title="Premium"
-            price="29 €"
-            sub="/mois"
-            features={[
-              "Jusqu'à 15 biens",
-              "Relances & rappels automatiques",
-              "Gestion artisans & interventions",
-              "Documents illimités",
-              "Support prioritaire",
-            ]}
-            cta={registerLink(PRICE.premium, "Choisir")}
-          />
+/* Premium 29 € */
+<PlanCard
+  title="Premium"
+  price="29 €"
+  sub="/mois"
+  features={[
+    "Jusqu'à 15 biens",
+    "Relances & rappels automatiques",
+    "Gestion artisans & interventions",
+    "Documents illimités",
+    "Support prioritaire",
+  ]}
+  cta={registerLink("premium", "Choisir")}        // ⬅️ ICI
+/>
+
+/* Business 79 € */
+<PlanCard
+  title="Business"
+  price="79 €"
+  sub="/mois"
+  features={[
+    "Biens illimités",
+    "Multi-collaborateurs",
+    "Exports comptables",
+    "Flux annonces (coming soon)",
+    "Support dédié",
+  ]}
+  cta={registerLink("business", "Choisir")}       // ⬅️ ICI
+/>
         </div>
       </section>
 
@@ -199,9 +214,11 @@ function PlanCard({
   );
 }
 
+type PlanKey = "proprietaire" | "premium" | "business";
+
 /** Tous les chemins passent par l’inscription, avec le plan en query si présent */
-function registerLink(priceId: string | undefined, label: string) {
-  const href = priceId ? `/auth/register?plan=${encodeURIComponent(priceId)}` : "/auth/register";
+function registerLink(plan: PlanKey | undefined, label: string) {
+  const href = plan ? `/auth/register?plan=${encodeURIComponent(plan)}` : "/auth/register";
   return (
     <Link
       href={href}
