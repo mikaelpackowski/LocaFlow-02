@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import Link from "next/link";
 
-/**
- * Si tu veux activer Stripe tout de suite, renseigne tes Price IDs ici
- * (optionnel, sinon les boutons mènent vers la connexion / le compte).
- */
+/** Renseigne tes Price IDs Stripe en env : */
 const PRICE = {
   proprietaire: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROPRIETAIRE, // 14 €
   premium: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM,           // 29 €
@@ -20,13 +17,17 @@ export const metadata = {
 };
 
 export default async function TarifsPage() {
-  const session = await getServerSession(authOptions);
+  // on ne s’en sert plus pour le routing, mais on garde si besoin plus tard
+  await getServerSession(authOptions);
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-          Tarifs <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">ForGesty</span>
+          Tarifs{" "}
+          <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+            ForGesty
+          </span>
         </h1>
         <p className="mt-3 text-gray-600">
           Des plans clairs pour propriétaires et agences. Commencez gratuitement,
@@ -34,7 +35,7 @@ export default async function TarifsPage() {
         </p>
       </header>
 
-      {/* ====== Bloc 1: Pour propriétaires ====== */}
+      {/* ====== Pour propriétaires ====== */}
       <section className="mt-10">
         <h2 className="text-sm font-semibold text-gray-900">Pour propriétaires</h2>
         <p className="text-sm text-gray-600">
@@ -53,23 +54,7 @@ export default async function TarifsPage() {
               "Documents de base",
               "Découverte de la plateforme",
             ]}
-            cta={
-              session ? (
-                <Link
-                  href="/compte/abonnement"
-                  className="w-full rounded-full border px-5 py-2 font-medium hover:bg-gray-50 text-center"
-                >
-                  Essayer
-                </Link>
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="w-full rounded-full border px-5 py-2 font-medium hover:bg-gray-50 text-center"
-                >
-                  Essayer
-                </Link>
-              )
-            }
+            cta={registerLink(undefined, "Choisir")}
           />
 
           {/* Propriétaire 14 € — Populaire */}
@@ -86,18 +71,7 @@ export default async function TarifsPage() {
               "Aide IA intégrée",
               "Support standard",
             ]}
-            cta={
-              session ? (
-                priceButton(PRICE.proprietaire, "Commencer")
-              ) : (
-                <Link
-                  href="/auth/login?next=/tarifs"
-                  className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500 text-center"
-                >
-                  Commencer
-                </Link>
-              )
-            }
+            cta={registerLink(PRICE.proprietaire, "Choisir")}
           />
 
           {/* Premium 29 € */}
@@ -112,23 +86,12 @@ export default async function TarifsPage() {
               "Documents illimités",
               "Support prioritaire",
             ]}
-            cta={
-              session ? (
-                priceButton(PRICE.premium, "Essayer")
-              ) : (
-                <Link
-                  href="/auth/login?next=/tarifs"
-                  className="w-full rounded-full border px-5 py-2 font-medium hover:bg-gray-50 text-center"
-                >
-                  Essayer
-                </Link>
-              )
-            }
+            cta={registerLink(PRICE.premium, "Choisir")}
           />
         </div>
       </section>
 
-      {/* ====== Bloc 2: Pour agences & pros ====== */}
+      {/* ====== Agences & pros ====== */}
       <section className="mt-12">
         <h2 className="text-sm font-semibold text-gray-900">Pour agences & pros</h2>
         <p className="text-sm text-gray-600">
@@ -148,18 +111,7 @@ export default async function TarifsPage() {
               "Flux annonces (coming soon)",
               "Support dédié",
             ]}
-            cta={
-              session ? (
-                priceButton(PRICE.business, "Commencer")
-              ) : (
-                <Link
-                  href="/auth/login?next=/tarifs"
-                  className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500 text-center"
-                >
-                  Commencer
-                </Link>
-              )
-            }
+            cta={registerLink(PRICE.business, "Choisir")}
           />
 
           {/* Enterprise – Sur devis */}
@@ -177,7 +129,7 @@ export default async function TarifsPage() {
                 href="/contact"
                 className="w-full rounded-full border px-5 py-2 font-medium hover:bg-gray-50 text-center"
               >
-                Essayer
+                Choisir
               </Link>
             }
           />
@@ -247,29 +199,15 @@ function PlanCard({
   );
 }
 
-/** Génère un bouton Stripe si un priceId est présent, sinon renvoie vers l’abonnement */
-function priceButton(priceId: string | undefined, label: string) {
-  if (!priceId) {
-    return (
-      <Link
-        href="/compte/abonnement"
-        className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500 text-center"
-      >
-        {label}
-      </Link>
-    );
-  }
-  // Si tu as déjà un composant StripePostButton, tu peux l'utiliser ici :
+/** Tous les chemins passent par l’inscription, avec le plan en query si présent */
+function registerLink(priceId: string | undefined, label: string) {
+  const href = priceId ? `/auth/register?plan=${encodeURIComponent(priceId)}` : "/auth/register";
   return (
-    <form action="/api/billing/checkout" method="POST" className="w-full">
-      <input type="hidden" name="priceId" value={priceId} />
-      <input type="hidden" name="mode" value="subscription" />
-      <button
-        type="submit"
-        className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-      >
-        {label}
-      </button>
-    </form>
+    <Link
+      href={href}
+      className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500 text-center"
+    >
+      {label}
+    </Link>
   );
 }
