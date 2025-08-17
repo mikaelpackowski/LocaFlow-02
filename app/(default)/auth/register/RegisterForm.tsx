@@ -26,7 +26,7 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/owners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // ✅ On envoie du JSON correct (pas de JSON.parse sur plan)
