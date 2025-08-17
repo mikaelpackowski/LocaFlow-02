@@ -1,263 +1,175 @@
 // app/(default)/compte/abonnement/page.tsx
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
-import Link from "next/link";
-import dayjs from "dayjs";
-import type Stripe from "stripe"; // ✅ ajoute les types Stripe uniquement
-
-const PRICE = {
-  proprietaire: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROPRIETAIRE, // 14 €
-  premium: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM,           // 29 €
-  business: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS,         // 79 €
-} as const;
+import Stripe from "stripe";
+import { Suspense } from "react";
 
 export const metadata = {
   title: "Mon abonnement – ForGesty",
-  description: "Suivi de l’abonnement et gestion via le portail Stripe.",
 };
 
-export default async function AbonnementPage() {
-  const session = await getServerSession(authOptions);
+type SubState = {
+  status: string | null; // active | trialing | past_due | canceled | unpaid | ...
+  planLabel: string | null; // ex. Proprietaire / Premium ...
+  priceId: string | null;
+  currentPeriodEnd: number | null; // epoch seconds
+  customerEmail: string | null;
+};
 
+async function fetchSubscriptionForUser(email: string): Promise<SubState | null> {
+  // === OPTION A: Ta base (si déjà branchée)
+  // try {
+  //   const res = await fetch(`${process.env.INTERNAL_API_URL}/subscriptions?email=${encodeURIComponent(email)}`, { cache: "no-store" });
+  //   if (res.ok) return await res.json();
+  // } catch {}
+
+  // === OPTION B: Stripe (fallback)
+  const customers = await stripe.customers.list({ email, limit: 1 });
+  const customer = customers.data[0];
+  if (!customer) return null;
+
+  const subs = await stripe.subscriptions.list({
+    customer: customer.id,
+    status: "all",
+    limit: 1,
+    expand: ["data.items.data.price.product"],
+  });
+
+  const sub = subs.data[0];
+  if (!sub) return null;
+
+  const priceObj = sub.items.data[0]?.price as Stripe.Price | undefined;
+  const product = priceObj?.product as Stripe.Product | undefined;
+
+  return {
+    status: sub.status ?? null,
+    planLabel: (product?.name as string) ?? null,
+    priceId: priceObj?.id ?? null,
+    currentPeriodEnd: sub.current_period_end ?? null,
+    customerEmail: typeof customer.email === "string" ? customer.email : null,
+  };
+}
+
+function StatusPill({ status }: { status: string | null }) {
+  const map: Record<string, string> = {
+    active: "bg-green-100 text-green-700",
+    trialing: "bg-blue-100 text-blue-700",
+    past_due: "bg-yellow-100 text-yellow-700",
+    canceled: "bg-gray-200 text-gray-700",
+    unpaid: "bg-red-100 text-red-700",
+  };
+  const cls = map[status ?? ""] ?? "bg-gray-100 text-gray-700";
+  const label = (status ?? "unknown").replace("_", " ");
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+}
+
+function formatDate(epoch: number | null) {
+  if (!epoch) return "–";
+  return new Date(epoch * 1000).toLocaleDateString();
+}
+
+export default async function AbonnementPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ checkout?: string }>;
+}) {
+  const sp = searchParams ? await searchParams : undefined;
+  const justPaid = sp?.checkout === "success";
+
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return (
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-14 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Mon abonnement</h1>
-        <p className="mt-2 text-gray-600">Connectez-vous pour gérer votre abonnement.</p>
-        <div className="mt-6 flex justify-center">
-          <Link
-            href="/auth/login?next=/compte/abonnement"
-            className="rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-          >
-            Se connecter
-          </Link>
-        </div>
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
+        <h1 className="text-2xl font-bold">Mon abonnement</h1>
+        <p className="mt-2 text-gray-600">Veuillez vous connecter pour voir votre abonnement.</p>
       </main>
     );
   }
 
-  // Stripe: retrouver le customer et son abonnement (si existant)
-  const { subscription, customer } = await getStripeSubscription(session.user.email);
-
-  const currentItem = subscription?.items.data[0];
-  const planName =
-    currentItem?.price?.nickname ??
-    mapPriceToLabel(currentItem?.price?.id) ??
-    "—";
-
-  const status = subscription?.status ?? "aucun";
-  const periodEnd = subscription?.current_period_end
-    ? dayjs.unix(subscription.current_period_end).format("DD/MM/YYYY")
-    : null;
+  const sub = await fetchSubscriptionForUser(session.user.email);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-14">
-      <h1 className="text-2xl font-bold text-gray-900">Mon abonnement</h1>
-      <p className="mt-2 text-gray-600">
-        Gérez votre formule et vos factures directement depuis votre espace.
-      </p>
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
+      <h1 className="text-2xl font-bold">Mon abonnement</h1>
 
-      <section className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Statut</h2>
+      {justPaid && (
+        <SuccessBanner />
+      )}
 
-        {subscription ? (
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Info label="Offre" value={planName} />
-            <Info label="Statut" value={statusLabel(status)} />
-            <Info label="Prochaine échéance" value={periodEnd ?? "—"} />
+      <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
+        {sub ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-gray-600">Plan</div>
+                <div className="text-lg font-semibold">{sub.planLabel ?? "—"}</div>
+              </div>
+              <StatusPill status={sub.status} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <div className="text-sm text-gray-600">Prochaine échéance</div>
+                <div className="font-medium">{formatDate(sub.currentPeriodEnd)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Email de facturation</div>
+                <div className="font-medium">{sub.customerEmail ?? "—"}</div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <a
+                href="/api/billing/portal"
+                className="inline-flex items-center rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
+              >
+                Gérer mon abonnement (Stripe)
+              </a>
+            </div>
           </div>
         ) : (
-          <p className="mt-2 text-gray-600">Aucun abonnement actif pour le moment.</p>
+          <div className="text-gray-700">
+            Aucun abonnement actif détecté pour <strong>{session.user.email}</strong>.
+            <div className="mt-3">
+              <Link
+                className="inline-flex items-center rounded-full border px-5 py-2 font-medium hover:bg-gray-50"
+                href="/tarifs"
+              >
+                Choisir un plan
+              </Link>
+            </div>
+          </div>
         )}
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          {subscription && customer && (
-            <form action="/api/billing/portal" method="POST">
-              <button
-                type="submit"
-                className="rounded-full border px-5 py-2 font-medium hover:bg-gray-50"
-              >
-                Gérer mon abonnement
-              </button>
-            </form>
-          )}
-        </div>
-      </section>
-
-      {/* Proposer des actions rapides d’upgrade/downgrade */}
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold text-gray-900">Changer de plan</h2>
-        <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <PlanAction
-            title="Propriétaire"
-            price="14 € / mois"
-            disabled={isSamePrice(subscription, PRICE.proprietaire)}
-          >
-            {PRICE.proprietaire ? (
-              <CheckoutButton priceId={PRICE.proprietaire} />
-            ) : (
-              <Link
-                href="/tarifs"
-                className="rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-              >
-                Voir les tarifs
-              </Link>
-            )}
-          </PlanAction>
-
-          <PlanAction
-            title="Premium"
-            price="29 € / mois"
-            disabled={isSamePrice(subscription, PRICE.premium)}
-          >
-            {PRICE.premium ? (
-              <CheckoutButton priceId={PRICE.premium} />
-            ) : (
-              <Link
-                href="/tarifs"
-                className="rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-              >
-                Voir les tarifs
-              </Link>
-            )}
-          </PlanAction>
-
-          <PlanAction
-            title="Business"
-            price="79 € / mois"
-            disabled={isSamePrice(subscription, PRICE.business)}
-          >
-            {PRICE.business ? (
-              <CheckoutButton priceId={PRICE.business} />
-            ) : (
-              <Link
-                href="/tarifs"
-                className="rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-              >
-                Voir les tarifs
-              </Link>
-            )}
-          </PlanAction>
-        </div>
-      </section>
+      </div>
     </main>
   );
 }
 
-/* -------- utils UI -------- */
-
-function Info({ label, value }: { label: string; value: string }) {
+function SuccessBanner() {
   return (
-    <div className="rounded-lg border p-4">
-      <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 font-medium text-gray-900">{value}</div>
-    </div>
+    <Suspense>
+      {/* Client component inline via "use client" boundary */}
+      {/* eslint-disable-next-line @next/next/no-script-in-document */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            setTimeout(() => {
+              const el = document.getElementById('success-redirect');
+              if (el) el.style.display = 'block';
+              setTimeout(() => { window.location.href = '/dashboard'; }, 3500);
+            }, 100);
+          `,
+        }}
+      />
+      <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+        <div className="font-semibold text-green-800">Paiement confirmé 🎉</div>
+        <div className="text-green-700">Merci ! Votre abonnement est actif (ou en cours d’activation).</div>
+        <div id="success-redirect" className="mt-2 hidden text-sm text-green-800/80">
+          Redirection vers le tableau de bord…
+        </div>
+      </div>
+    </Suspense>
   );
-}
-
-function PlanAction({
-  title,
-  price,
-  children,
-  disabled,
-}: {
-  title: string;
-  price: string;
-  children: React.ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <div className={`rounded-2xl border bg-white p-6 ${disabled ? "opacity-60" : ""}`}>
-      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-600">{price}</p>
-      <div className="mt-4">{children}</div>
-      {disabled && <p className="mt-2 text-xs text-gray-500">Plan actuel</p>}
-    </div>
-  );
-}
-
-function CheckoutButton({ priceId }: { priceId: string }) {
-  return (
-    <form action="/api/billing/checkout" method="POST">
-      <input type="hidden" name="priceId" value={priceId} />
-      <input type="hidden" name="mode" value="subscription" />
-      <button
-        type="submit"
-        className="rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500"
-      >
-        Choisir ce plan
-      </button>
-    </form>
-  );
-}
-
-/* -------- utils Stripe -------- */
-
-async function getStripeSubscription(email: string) {
-  // retrouve ou crée le customer
-  const customers = await stripe.customers.list({ email, limit: 1 });
-  const customer = customers.data[0] ?? null;
-
-  if (!customer) {
-    return { customer: null, subscription: null };
-  }
-
-  // prend l’abonnement le plus pertinent (active / trialing en priorité)
-  const list = await stripe.subscriptions.list({
-    customer: customer.id,
-    status: "all",
-    limit: 10,
-    expand: ["data.items.data.price.product"],
-  });
-
-  const byPriority = (s: Stripe.Subscription) => {
-    const order: Record<string, number> = {
-      trialing: 0,
-      active: 1,
-      past_due: 2,
-      canceled: 3,
-      unpaid: 4,
-      incomplete: 5,
-      incomplete_expired: 6,
-      paused: 7,
-    };
-    return order[s.status] ?? 99;
-  };
-
-  const sorted = list.data.sort((a, b) => byPriority(a) - byPriority(b));
-  const subscription = sorted[0] ?? null;
-
-  return { customer, subscription };
-}
-
-function isSamePrice(sub: any, priceId?: string) {
-  if (!sub || !priceId) return false;
-  const current = sub.items?.data?.[0]?.price?.id;
-  return current === priceId;
-}
-
-function mapPriceToLabel(priceId?: string) {
-  if (!priceId) return undefined;
-  if (priceId === PRICE.proprietaire) return "Propriétaire";
-  if (priceId === PRICE.premium) return "Premium";
-  if (priceId === PRICE.business) return "Business";
-  return undefined;
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "trialing":
-      return "Essai";
-    case "active":
-      return "Actif";
-    case "past_due":
-      return "En retard";
-    case "canceled":
-      return "Annulé";
-    case "unpaid":
-      return "Impayé";
-    default:
-      return status;
-  }
 }
