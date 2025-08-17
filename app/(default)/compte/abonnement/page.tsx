@@ -6,18 +6,15 @@ export const metadata = {
   description: "Gérez votre abonnement et vos paiements.",
 };
 
-export default function AbonnementPage({
-  searchParams,
-}: {
-  searchParams?: { success?: string };
-}) {
-  const justPaid = searchParams?.success === "true";
+// ❌ pas de PageProps ici → typage manuel seulement
+export default function AbonnementPage(props: any) {
+  const success = props?.searchParams?.success;
+  const justPaid = success === "true";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="text-2xl font-bold mb-6">Mon abonnement</h1>
 
-      {/* Affiche la notice si l’utilisateur revient du paiement */}
       {justPaid && <SuccessNotice />}
 
       <section className="rounded-xl border bg-white p-6 shadow-sm">
