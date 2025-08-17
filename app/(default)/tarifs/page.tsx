@@ -175,3 +175,38 @@ function PlanCard({
       </div>
 
       {/* flex-1 pour pousser le CTA en bas */}
+      <ul className="mt-4 space-y-2 text-sm text-gray-700 flex-1">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2">
+            <svg className="mt-0.5 h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414L8.5 11.086l6.543-6.543a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      {/* mt-auto = bouton calé en bas sur toutes les cartes */}
+      <div className="mt-auto">{cta}</div>
+    </div>
+  );
+}
+
+type PlanKey = "proprietaire" | "premium" | "business";
+
+/** Tous les chemins passent par l’inscription, avec le plan en query si présent */
+function registerLink(plan: PlanKey | undefined, label: string) {
+  const href = plan ? `/auth/register?plan=${encodeURIComponent(plan)}` : "/auth/register";
+  return (
+    <Link
+      href={href}
+      className="w-full rounded-full bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-500 text-center"
+    >
+      {label}
+    </Link>
+  );
+}
