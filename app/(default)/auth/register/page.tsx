@@ -6,19 +6,22 @@ export const metadata = {
   description: "Renseignez vos informations pour activer votre abonnement.",
 };
 
-export default async function RegisterPage({
+export default function RegisterPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ plan?: string }>;
+  // Next 15: ici on peut garder un objet simple, pas besoin d'async
+  searchParams?: { plan?: string };
 }) {
-  const sp = searchParams ? await searchParams : undefined;
-  const planFromUrl = typeof sp?.plan === "string" ? sp.plan : "";
+  const planFromUrl =
+    typeof searchParams?.plan === "string" ? searchParams.plan : "";
 
   return (
-    <main className="mx-auto max-w-xl px-4 sm:px-6 py-10">
-      <header className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Créer un compte</h1>
-        <p className="mt-1 text-gray-600">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-28 pb-16">
+      <header className="mb-8 text-center">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+          Créer un compte
+        </h1>
+        <p className="mt-2 text-gray-600">
           Renseignez vos informations pour activer votre abonnement.
         </p>
       </header>
