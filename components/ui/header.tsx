@@ -23,23 +23,23 @@ export default function Header() {
   return (
     <header
       id="site-header"
-      className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur md:h-16"
+      className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur h-16"
       role="banner"
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        {/* Logo => accueil */}
+      {/* ✅ wrapper pleine largeur, padding responsive */}
+      <div className="mx-auto flex w-full items-center justify-between px-4 sm:px-6 lg:px-8 h-full">
+        {/* Logo => accueil (plus à gauche grâce au full-width) */}
         <Link href="/" className="text-xl font-bold text-gray-900" onClick={closeAll}>
           ForGesty
         </Link>
 
-        {/* Nav desktop */}
+        {/* Nav desktop (plus à droite grâce au full-width) */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
           <Link href="/annonces" className="hover:text-violet-600">Annonces</Link>
           <Link href="/tarifs" className="hover:text-violet-600">Tarifs</Link>
           <Link href="/faq" className="hover:text-violet-600">FAQ</Link>
           <Link href="/contact" className="hover:text-violet-600">Contact</Link>
 
-          {/* Espace à droite : Compte */}
           {!session ? (
             <Link
               href="/auth/login"
@@ -87,7 +87,6 @@ export default function Header() {
                   <div className="border-t" />
 
                   <div className="py-1 text-sm">
-                    {/* Tableau de bord selon le rôle */}
                     {dashboardPath && (
                       <Link
                         href={dashboardPath}
@@ -131,7 +130,7 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Burger */}
+        {/* Burger (mobile) */}
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className="rounded md:hidden focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -158,7 +157,7 @@ export default function Header() {
 
       {/* Menu mobile */}
       {menuOpen && (
-        <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
+        <nav className="space-y-3 border-t bg-white px-4 sm:px-6 lg:px-8 py-3 text-sm md:hidden">
           <Link href="/annonces" className="block hover:text-violet-600" onClick={closeAll}>
             Annonces
           </Link>
@@ -182,7 +181,6 @@ export default function Header() {
             </Link>
           ) : (
             <>
-              {/* Tableau de bord (mobile) */}
               {dashboardPath && (
                 <Link
                   href={dashboardPath}
@@ -201,11 +199,7 @@ export default function Header() {
                 Abonnement & factures
               </Link>
 
-              <Link
-                href="/profil"
-                className="block hover:text-violet-600"
-                onClick={closeAll}
-              >
+              <Link href="/profil" className="block hover:text-violet-600" onClick={closeAll}>
                 Mon profil
               </Link>
 
