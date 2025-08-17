@@ -1,12 +1,11 @@
 // app/api/billing/webhook/route.ts
+import Stripe from "stripe";              // ⬅️ manquait
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
 // ⚠️ Renseigne STRIPE_WEBHOOK_SECRET dans tes variables d'env (mode test OU live)
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-// Vercel/Next App Router : on lit le RAW body via req.text()
-// Ne surtout PAS faire req.json() avant constructEvent !
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
