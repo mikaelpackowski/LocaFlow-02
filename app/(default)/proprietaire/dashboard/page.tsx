@@ -1,5 +1,6 @@
 import { mockOwnerStats, mockProperties, mockApplications, mockPayments } from "@/utils/owner-data";
 import Link from "next/link";
+import ManagePortalButton from "@/components/ManagePortalButton";
 
 export const metadata = {
   title: "Tableau de bord propriétaire | LocaFlow",
@@ -29,13 +30,22 @@ export default function DashboardPage() {
       {/* 2 colonnes */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card title="Mes biens (5 derniers)" action={<Link href="/proprietaire/biens" className="text-sm text-indigo-600 hover:underline">Voir tous</Link>}>
+          <Card
+            title="Mes biens (5 derniers)"
+            action={
+              <Link href="/proprietaire/biens" className="text-sm text-indigo-600 hover:underline">
+                Voir tous
+              </Link>
+            }
+          >
             <div className="divide-y">
               {properties.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div>
                     <div className="font-medium text-gray-900">{p.title}</div>
-                    <div className="text-sm text-gray-500">{p.city} • {p.type} • {p.rent.toLocaleString("fr-FR")} €</div>
+                    <div className="text-sm text-gray-500">
+                      {p.city} • {p.type} • {p.rent.toLocaleString("fr-FR")} €
+                    </div>
                   </div>
                   <Link href={`/annonces/${p.slug}`} className="text-sm text-indigo-600 hover:underline">
                     Ouvrir
@@ -45,19 +55,32 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          <Card title="Candidatures récentes" action={<Link href="/proprietaire/demandes" className="text-sm text-indigo-600 hover:underline">Voir toutes</Link>}>
+          <Card
+            title="Candidatures récentes"
+            action={
+              <Link href="/proprietaire/demandes" className="text-sm text-indigo-600 hover:underline">
+                Voir toutes
+              </Link>
+            }
+          >
             <div className="divide-y">
               {applications.map((a) => (
                 <div key={a.id} className="flex items-center justify-between py-3">
                   <div>
                     <div className="font-medium text-gray-900">{a.applicant}</div>
-                    <div className="text-sm text-gray-500">{a.propertyTitle} • {a.city}</div>
+                    <div className="text-sm text-gray-500">
+                      {a.propertyTitle} • {a.city}
+                    </div>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    a.status === "Reçue" ? "bg-gray-100 text-gray-700" :
-                    a.status === "En cours" ? "bg-amber-100 text-amber-700" :
-                    "bg-emerald-100 text-emerald-700"
-                  }`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      a.status === "Reçue"
+                        ? "bg-gray-100 text-gray-700"
+                        : a.status === "En cours"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
                     {a.status}
                   </span>
                 </div>
@@ -67,15 +90,49 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <Card title="Paiements récents" action={<Link href="/proprietaire/paiements" className="text-sm text-indigo-600 hover:underline">Voir tout</Link>}>
+          {/* ---- Carte Abonnement (nouvelle) ---- */}
+          <Card
+            title="Abonnement"
+            action={
+              <Link href="/compte/abonnement" className="text-sm text-indigo-600 hover:underline">
+                Détails
+              </Link>
+            }
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                Gérez votre moyen de paiement et retrouvez vos factures.
+              </div>
+              {/* badge statut placeholder (remplace par le vrai statut si tu l’as) */}
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                actif
+              </span>
+            </div>
+            <div className="mt-4">
+              <ManagePortalButton />
+            </div>
+          </Card>
+
+          <Card
+            title="Paiements récents"
+            action={
+              <Link href="/proprietaire/paiements" className="text-sm text-indigo-600 hover:underline">
+                Voir tout
+              </Link>
+            }
+          >
             <div className="divide-y">
               {payments.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div>
                     <div className="font-medium text-gray-900">{p.tenant}</div>
-                    <div className="text-sm text-gray-500">{p.propertyTitle} • {p.date}</div>
+                    <div className="text-sm text-gray-500">
+                      {p.propertyTitle} • {p.date}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold text-gray-900">{p.amount.toLocaleString("fr-FR")} €</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {p.amount.toLocaleString("fr-FR")} €
+                  </div>
                 </div>
               ))}
             </div>
@@ -83,7 +140,10 @@ export default function DashboardPage() {
 
           <Card title="Actions rapides">
             <div className="flex flex-col gap-2">
-              <Link href="/proprietaire/biens/nouveau" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+              <Link
+                href="/proprietaire/biens/nouveau"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+              >
                 + Déposer un bien
               </Link>
               <Link href="/proprietaire/documents" className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
@@ -91,6 +151,10 @@ export default function DashboardPage() {
               </Link>
               <Link href="/proprietaire/demandes" className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
                 Voir les candidatures
+              </Link>
+              {/* Lien direct vers la page abonnement si besoin */}
+              <Link href="/compte/abonnement" className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
+                Abonnement & factures
               </Link>
             </div>
           </Card>
