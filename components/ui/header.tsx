@@ -1,264 +1,87 @@
-"use client";
-
+// app/(default)/profil/page.tsx
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 import Link from "next/link";
-import { useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { redirect } from "next/navigation";
 
-export default function Header() {
-  const { data: session } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+export const metadata = {
+  title: "Mon profil – ForGesty",
+  description: "Consultez et gérez les informations de votre compte.",
+};
 
-  const isOwner = session?.user?.role === "owner";
-  const isTenant = session?.user?.role === "tenant";
+export default async function ProfilPage() {
+  const session = await getServerSession(authOptions);
 
-  function closeAll() {
-    setMenuOpen(false);
-    setAccountOpen(false);
+  // Si pas connecté → redirige vers login avec callback
+  if (!session?.user?.email) {
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent("/profil")}`);
   }
 
+  // À partir d’ici, session et user sont définis
+  const user = session.user!;
+  const role = (user as any).role ?? "Utilisateur";
+
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        {/* Logo => accueil */}
-        <Link href="/" className="text-xl font-bold text-gray-900" onClick={closeAll}>
-          ForGesty
-        </Link>
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-28 pb-16 space-y-8">
+      <header>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Mon profil</h1>
+        <p className="mt-1 text-gray-600">Gérez vos informations personnelles.</p>
+      </header>
 
-        {/* Nav desktop */}
-        <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link href="/annonces" className="hover:text-violet-600">Annonces</Link>
-          <Link href="/tarifs" className="hover:text-violet-600">Tarifs</Link>
-          <Link href="/faq" className="hover:text-violet-600">FAQ</Link>
-          <Link href="/contact" className="hover:text-violet-600">Contact</Link>
+      <section className="rounded-2xl border bg-white p-6 shadow-sm space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Informations</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Ces informations proviennent de votre compte.
+            </p>
+          </div>
+          {/* Badge rôle */}
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            {role}
+          </span>
+        </div>
 
-          {/* Espace à droite : Compte */}
-          {!session ? (
-            <Link
-              href="/auth/login"
-              className="rounded-full bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500"
-            >
-              Se connecter
-            </Link>
-          ) : (
-            <div className="relative">
-              <button
-                onClick={() => setAccountOpen((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-full border px-3 py-2 hover:bg-gray-50"
-                aria-expanded={accountOpen}
-                aria-haspopup="menu"
-              >
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-                  {session.user?.name?.[0]?.toUpperCase() ?? "U"}
-                </span>
-                Compte
-                <svg
-                  className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.17l3.71-2.94a.75.75 0 0 1 .94 1.17l-4.24 3.36a.75.75 0 0 1-.94 0L5.21 8.4a.75.75 0 0 1 .02-1.19Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border p-4">
+            <dt className="text-xs uppercase tracking-wide text-gray-500">Nom</dt>
+            <dd className="mt-1 font-medium text-gray-900">
+              {user.name ?? "—"}
+            </dd>
+          </div>
 
-              {accountOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border bg-white shadow-lg"
-                  role="menu"
-                >
-                  <div className="px-4 py-3 text-sm">
-                    <p className="font-semibold text-gray-900">
-                      {session.user?.name ?? session.user?.email}
-                    </p>
-                    <p className="text-gray-500">{session.user?.role ?? "Utilisateur"}</p>
-                  </div>
-                  <div className="border-t" />
+          <div className="rounded-lg border p-4">
+            <dt className="text-xs uppercase tracking-wide text-gray-500">Email</dt>
+            <dd className="mt-1 font-medium text-gray-900">
+              {user.email}
+            </dd>
+          </div>
+        </dl>
 
-                  {/* Liens dynamiques */}
-                  <div className="py-1 text-sm">
-                    {isOwner && (
-                      <>
-                        <Link
-                          href="/proprietaire/dashboard"
-                          className="block px-4 py-2 hover:bg-gray-50"
-                          onClick={closeAll}
-                        >
-                          Tableau de bord propriétaire
-                        </Link>
-                        <Link
-                          href="/proprietaire/problemes"
-                          className="block px-4 py-2 hover:bg-gray-50"
-                          onClick={closeAll}
-                        >
-                          Gérer un problème
-                        </Link>
-                      </>
-                    )}
-                    {isTenant && (
-                      <>
-                        <Link
-                          href="/locataire/dashboard"
-                          className="block px-4 py-2 hover:bg-gray-50"
-                          onClick={closeAll}
-                        >
-                          Tableau de bord locataire
-                        </Link>
-                        <Link
-                          href="/locataire/probleme"
-                          className="block px-4 py-2 hover:bg-gray-50"
-                          onClick={closeAll}
-                        >
-                          Signaler un problème
-                        </Link>
-                      </>
-                    )}
-
-                    {/* Nouveau : Abonnement & factures */}
-                    <Link
-                      href="/compte/abonnement"
-                      className="block px-4 py-2 hover:bg-gray-50"
-                      onClick={closeAll}
-                    >
-                      Abonnement & factures
-                    </Link>
-
-                    <Link
-                      href="/profil"
-                      className="block px-4 py-2 hover:bg-gray-50"
-                      onClick={closeAll}
-                    >
-                      Mon profil
-                    </Link>
-                  </div>
-
-                  <div className="border-t" />
-                  <button
-                    onClick={() => {
-                      closeAll();
-                      signOut({ callbackUrl: "/" });
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
-                  >
-                    Se déconnecter
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </nav>
-
-        {/* Burger (mobile) */}
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="rounded md:hidden focus:outline-none focus:ring-2 focus:ring-violet-500"
-          aria-label="Ouvrir/fermer le menu"
-          aria-expanded={menuOpen}
-        >
-          <svg className="h-6 w-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2"
-            viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            {menuOpen ? (
-              <path d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {/* Menu mobile */}
-      {menuOpen && (
-        <nav className="space-y-3 border-t bg-white px-4 py-3 text-sm md:hidden">
-          <Link href="/annonces" className="block hover:text-violet-600" onClick={closeAll}>
-            Annonces
-          </Link>
-          <Link href="/tarifs" className="block hover:text-violet-600" onClick={closeAll}>
-            Tarifs
-          </Link>
-          <Link href="/faq" className="block hover:text-violet-600" onClick={closeAll}>
-            FAQ
-          </Link>
-          <Link href="/contact" className="block hover:text-violet-600" onClick={closeAll}>
-            Contact
+        <div className="flex flex-wrap gap-3">
+          {/* Dashboard propriétaire */}
+          <Link
+            href="/proprietaire/dashboard"
+            className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+          >
+            Tableau de bord
           </Link>
 
-          {!session ? (
-            <Link
-              href="/auth/login"
-              className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-violet-600 px-4 py-2 font-semibold text-white hover:bg-violet-500"
-              onClick={closeAll}
-            >
-              Se connecter
-            </Link>
-          ) : (
-            <>
-              {isOwner && (
-                <>
-                  <Link
-                    href="/proprietaire/dashboard"
-                    className="block hover:text-violet-600"
-                    onClick={closeAll}
-                  >
-                    Tableau de bord propriétaire
-                  </Link>
-                  <Link
-                    href="/proprietaire/problemes"
-                    className="block hover:text-violet-600"
-                    onClick={closeAll}
-                  >
-                    Gérer un problème
-                  </Link>
-                </>
-              )}
-              {isTenant && (
-                <>
-                  <Link
-                    href="/locataire/dashboard"
-                    className="block hover:text-violet-600"
-                    onClick={closeAll}
-                  >
-                    Tableau de bord locataire
-                  </Link>
-                  <Link
-                    href="/locataire/probleme"
-                    className="block hover:text-violet-600"
-                    onClick={closeAll}
-                  >
-                    Signaler un problème
-                  </Link>
-                </>
-              )}
+          <Link
+            href="/compte/abonnement"
+            className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
+          >
+            Abonnement & factures
+          </Link>
 
-              {/* Nouveau : Abonnement & factures (mobile) */}
-              <Link
-                href="/compte/abonnement"
-                className="block hover:text-violet-600"
-                onClick={closeAll}
-              >
-                Abonnement & factures
-              </Link>
-
-              <Link href="/profil" className="block hover:text-violet-600" onClick={closeAll}>
-                Mon profil
-              </Link>
-
-              <button
-                onClick={() => {
-                  closeAll();
-                  signOut({ callbackUrl: "/" });
-                }}
-                className="mt-2 w-full rounded-full border px-4 py-2 text-left hover:bg-gray-50"
-              >
-                Se déconnecter
-              </button>
-            </>
-          )}
-        </nav>
-      )}
-    </header>
+          <Link
+            href="/auth/change-password"
+            className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
+          >
+            Changer mon mot de passe
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }
