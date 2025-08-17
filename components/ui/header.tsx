@@ -23,7 +23,7 @@ export default function Header() {
   return (
     <header
       id="site-header"
-      className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur h-16"
+      className="fixed top-0 left-0 z-50 w-full border-b bg-white/90 backdrop-blur h-20"
       role="banner"
     >
       {/* ✅ wrapper pleine largeur, padding responsive */}
