@@ -23,7 +23,7 @@ const ALIASES: Record<string, PlanKey> = {
 function normalizePlan(input?: string | null): PlanKey | undefined {
   if (!input) return undefined;
   const raw = input.toLowerCase().trim();
-  return (ALIASES[raw] ?? raw) as PlanKey;
+  return (ALIASES[raw] ?? (raw as PlanKey));
 }
 
 async function baseUrl() {
@@ -41,7 +41,7 @@ async function resolvePriceId(value?: string | null): Promise<string | null> {
   // 1) Déjà un priceId
   if (v.startsWith("price_")) return v;
 
-  // 2) ProductId -> on récupère default_price
+  // 2) ProductId -> récupérer default_price
   if (v.startsWith("prod_")) {
     const product = await stripe.products.retrieve(v, { expand: ["default_price"] });
     const dp = product.default_price as string | Stripe.Price | null | undefined;
@@ -87,14 +87,22 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    // on accepte ?plan=... ou ?priceId=...
+    // on accepte ?plan=... (peut être price_, prod_, lookup_key, OU alias)
+    // et/ou ?priceId=...
     const plan = searchParams.get("plan");
     const priceParam = searchParams.get("priceId");
 
-    const directPrice = priceParam ? await resolvePriceId(priceParam) : null;
-    const planPrice = !directPrice ? await planToPriceId(plan) : null;
+    // 1) priceId explicite
+    const directPriceFromParam = priceParam ? await resolvePriceId(priceParam) : null;
 
-    const priceId = firstDefined(directPrice, planPrice);
+    // 2) price/prod/lookup passé dans ?plan=
+    const directPriceFromPlan = !directPriceFromParam && plan ? await resolvePriceId(plan) : null;
+
+    // 3) alias lisible -> env -> priceId
+    const planPrice =
+      !directPriceFromParam && !directPriceFromPlan ? await planToPriceId(plan) : null;
+
+    const priceId = firstDefined(directPriceFromParam, directPriceFromPlan, planPrice);
     if (!priceId) {
       const missing: string[] = [];
       if (!PLAN_ENV.proprietaire) missing.push("NEXT_PUBLIC_STRIPE_PRICE_PROPRIETAIRE");
@@ -146,9 +154,17 @@ export async function POST(req: Request) {
       price = searchParams.get("priceId");
     }
 
-    const directPrice = price ? await resolvePriceId(price) : null;
-    const planPrice = !directPrice ? await planToPriceId(plan) : null;
-    const priceId = firstDefined(directPrice, planPrice);
+    // 1) priceId explicite
+    const directPriceFromParam = price ? await resolvePriceId(price) : null;
+
+    // 2) price/prod/lookup dans plan
+    const directPriceFromPlan = !directPriceFromParam && plan ? await resolvePriceId(plan) : null;
+
+    // 3) alias plan -> env -> priceId
+    const planPrice =
+      !directPriceFromParam && !directPriceFromPlan ? await planToPriceId(plan) : null;
+
+    const priceId = firstDefined(directPriceFromParam, directPriceFromPlan, planPrice);
 
     if (!priceId) {
       return NextResponse.json(
