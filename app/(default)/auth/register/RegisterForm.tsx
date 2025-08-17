@@ -1,61 +1,62 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-type Role = "owner" | "tenant";
+type Props = {
+  /** Optionnel : preselect depuis l’URL (?plan=price_xxx)  */
+  defaultPlan?: string;
+};
 
-export default function RegisterForm() {
+export default function RegisterForm({ defaultPlan = "" }: Props) {
   const router = useRouter();
-  const sp = useSearchParams();
 
-  // IMPORTANT : on NE parse PAS en JSON – c'est juste une string
-  const planFromUrl = useMemo(() => (sp?.get("plan") ?? "").trim(), [sp]);
+  // Champs
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName]   = useState("");
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [role, setRole] = useState<"owner" | "tenant">("owner");
+  const [planId, setPlanId] = useState(defaultPlan);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("owner");
-  const [plan, setPlan] = useState(planFromUrl); // garde la valeur telle quelle
+  // UI
   const [loading, setLoading] = useState(false);
-  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [errMsg, setErrMsg]   = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrMsg(null);
     setLoading(true);
 
+    const payload = {
+      firstName: firstName.trim(),
+      lastName : lastName.trim(),
+      email    : email.trim(),
+      password,
+      role,
+      plan     : planId || undefined, // optionnel
+    };
+
     try {
       const res = await fetch("/api/owners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ✅ On envoie du JSON correct (pas de JSON.parse sur plan)
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          role,
-          plan, // ← simple string (ex: "price_123")
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const json = await res.json();
+      const ct = res.headers.get("content-type") || "";
+      const data = ct.includes("application/json")
+        ? await res.json()
+        : { ok: false, message: await res.text() };
 
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Erreur serveur");
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.message || `Erreur ${res.status}`);
       }
 
-      // Succès : si un plan est présent, on enchaîne sur le checkout
-      // Sinon on envoie vers le dashboard selon le rôle
-      if (plan) {
-        // on pousse vers une route qui initie le checkout (si tu as mis ce flux)
-        const q = new URLSearchParams({ plan, mode: "subscription" });
-        router.push(`/api/billing/checkout?${q.toString()}`);
-      } else {
-        router.push(role === "owner" ? "/proprietaire/dashboard" : "/locataire/dashboard");
-      }
+      // Succès : on envoie vers la connexion (tu peux changer la cible)
+      router.push("/auth/login?registered=1");
     } catch (err: any) {
-      setErrMsg(err.message || "Erreur serveur");
+      setErrMsg(err?.message || "Erreur inattendue.");
     } finally {
       setLoading(false);
     }
@@ -69,24 +70,37 @@ export default function RegisterForm() {
         </div>
       )}
 
-      <div>
-        <label className="text-sm font-medium text-gray-800">Nom</label>
-        <input
-          type="text"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full rounded-lg border px-3 py-2"
-          placeholder="Ex: Marie Dupont"
-        />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-800">Prénom</label>
+          <input
+            type="text"
+            required
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="mt-1 w-full rounded-lg border px-3 py-2"
+            placeholder="Alex"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-800">Nom</label>
+          <input
+            type="text"
+            required
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="mt-1 w-full rounded-lg border px-3 py-2"
+            placeholder="Martin"
+          />
+        </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-800">Email</label>
+        <label className="block text-sm font-medium text-gray-800">Email</label>
         <input
           type="email"
-          required
           autoComplete="email"
+          required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -95,11 +109,11 @@ export default function RegisterForm() {
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-800">Mot de passe</label>
+        <label className="block text-sm font-medium text-gray-800">Mot de passe</label>
         <input
           type="password"
-          required
           autoComplete="new-password"
+          required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -107,9 +121,10 @@ export default function RegisterForm() {
         />
       </div>
 
+      {/* Rôle */}
       <div>
-        <label className="text-sm font-medium text-gray-800">Je suis</label>
-        <div className="mt-1 grid grid-cols-2 gap-2">
+        <div className="text-sm font-medium text-gray-800">Je suis</div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setRole("owner")}
@@ -135,21 +150,21 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* Plan (si présent dans l’URL) – en lecture seule, mais modifiable si besoin */}
+      {/* Plan optionnel (pré-sélection Stripe Price ID) */}
       <div>
-        <label className="text-sm font-medium text-gray-800">
+        <label className="block text-sm font-medium text-gray-800">
           Plan (facultatif)
         </label>
         <input
           type="text"
-          value={plan}
-          onChange={(e) => setPlan(e.target.value)}
+          value={planId}
+          onChange={(e) => setPlanId(e.target.value)}
           className="mt-1 w-full rounded-lg border px-3 py-2"
-          placeholder="ex: price_123 (Stripe)"
+          placeholder="price_xxx (Stripe priceId)"
         />
-        {planFromUrl && (
+        {defaultPlan && (
           <p className="mt-1 text-xs text-gray-500">
-            Pré-sélectionné depuis l’URL : <code>{planFromUrl}</code>
+            Pré-sélectionné depuis l’URL : <span className="font-mono">{defaultPlan}</span>
           </p>
         )}
       </div>
