@@ -6,13 +6,13 @@ export const metadata = {
   description: "Renseignez vos informations pour activer votre abonnement.",
 };
 
-export default function RegisterPage({
+export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams?: { plan?: string };
+  searchParams?: Promise<{ plan?: string }>;
 }) {
-  const planFromUrl =
-    typeof searchParams?.plan === "string" ? searchParams.plan : "";
+  const sp = searchParams ? await searchParams : undefined;
+  const planFromUrl = typeof sp?.plan === "string" ? sp.plan : "";
 
   return (
     <main className="mx-auto max-w-xl px-4 sm:px-6 py-10">
