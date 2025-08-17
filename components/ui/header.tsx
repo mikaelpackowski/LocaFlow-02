@@ -21,6 +21,14 @@ export default async function ProfilPage() {
   const user = session.user!;
   const role = (user as any).role ?? "Utilisateur";
 
+  // Routing dashboard selon le rôle
+  const dashboardPath =
+    role === "owner"
+      ? "/proprietaire/dashboard"
+      : role === "tenant"
+      ? "/locataire/dashboard"
+      : null;
+
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-28 pb-16 space-y-8">
       <header>
@@ -45,27 +53,24 @@ export default async function ProfilPage() {
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-lg border p-4">
             <dt className="text-xs uppercase tracking-wide text-gray-500">Nom</dt>
-            <dd className="mt-1 font-medium text-gray-900">
-              {user.name ?? "—"}
-            </dd>
+            <dd className="mt-1 font-medium text-gray-900">{user.name ?? "—"}</dd>
           </div>
-
           <div className="rounded-lg border p-4">
             <dt className="text-xs uppercase tracking-wide text-gray-500">Email</dt>
-            <dd className="mt-1 font-medium text-gray-900">
-              {user.email}
-            </dd>
+            <dd className="mt-1 font-medium text-gray-900">{user.email}</dd>
           </div>
         </dl>
 
         <div className="flex flex-wrap gap-3">
-          {/* Dashboard propriétaire */}
-          <Link
-            href="/proprietaire/dashboard"
-            className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-          >
-            Tableau de bord
-          </Link>
+          {/* Bouton dashboard selon le rôle */}
+          {dashboardPath && (
+            <Link
+              href={dashboardPath}
+              className="inline-flex items-center rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+            >
+              Tableau de bord
+            </Link>
+          )}
 
           <Link
             href="/compte/abonnement"
