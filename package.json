@@ -22,7 +22,12 @@
     "zod": "^3.23.8",
     "resend": "^3.2.0",
     "stripe": "^16.0.0",
-    "dayjs": "^1.11.11"
+    "dayjs": "^1.11.11",
+    "@heroicons/react": "^2.1.5",
+  "next": "15.1.6",
+  "react": "18.3.1",
+  "react-dom": "18.3.1",
+  // … tes autres dépendances
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
