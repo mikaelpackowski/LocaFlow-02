@@ -1,42 +1,76 @@
 // app/(default)/compte/abonnement/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { redirect } from "next/navigation";
 import SuccessNotice from "@/components/SuccessNotice";
 
 export const metadata = {
   title: "Mon abonnement – ForGesty",
-  description: "Gérez votre abonnement et vos paiements ForGesty.",
 };
 
-export default async function AbonnementPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ success?: string }>;
-}) {
-  // Next 15 : await le Promise de searchParams
-  const sp = searchParams ? await searchParams : undefined;
-  const justPaid = sp?.success === "true";
+interface Props {
+  searchParams?: { success?: string };
+}
 
+export default async function AbonnementPage({ searchParams }: Props) {
   const session = await getServerSession(authOptions);
+  if (!session) redirect("/auth/login");
+
+  // 🔹 Ici tu pourras récupérer l’état réel de l’abonnement depuis ta DB (Supabase)
+  // Par exemple : const sub = await db.subscriptions.findByUser(session.user.id)
+  const abonnement = {
+    status: "active", // mock pour l’instant : "active" | "canceled" | "past_due"
+    plan: "Premium 29 € / mois",
+    renewal: "15 septembre 2025",
+  };
+
+  const justPaid = searchParams?.success === "true";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 pt-28 pb-16">
-      <h1 className="mb-8 text-3xl font-bold text-gray-900">Mon abonnement</h1>
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <h1 className="mb-6 text-2xl font-bold text-gray-900">Mon abonnement</h1>
 
       {justPaid && (
-        <div className="mb-8">
+        <div className="mb-6">
           <SuccessNotice />
         </div>
       )}
 
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <p className="text-gray-700">
-          Bonjour <span className="font-semibold">{session?.user?.name ?? "Utilisateur"}</span>,
-        </p>
-        <p className="mt-2 text-gray-600">
-          Ici s’affichera bientôt le détail de votre abonnement (état :{" "}
-          <span className="italic">active, canceled, past_due…</span>).
-        </p>
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">Détails</h2>
+        <dl className="mt-4 space-y-2 text-sm text-gray-700">
+          <div className="flex justify-between">
+            <dt>Plan actuel</dt>
+            <dd className="font-medium">{abonnement.plan}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>Statut</dt>
+            <dd
+              className={`font-medium ${
+                abonnement.status === "active"
+                  ? "text-green-600"
+                  : abonnement.status === "past_due"
+                  ? "text-orange-600"
+                  : "text-red-600"
+              }`}
+            >
+              {abonnement.status}
+            </dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>Prochain renouvellement</dt>
+            <dd>{abonnement.renewal}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-6 text-center">
+          <a
+            href="/api/billing/portal"
+            className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
+          >
+            Gérer mon abonnement
+          </a>
+        </div>
       </div>
     </main>
   );
