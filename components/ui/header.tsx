@@ -88,6 +88,9 @@ export default function Header() {
                         <Link href="/proprietaire/dashboard" className="block px-4 py-2 hover:bg-gray-50">
                           Tableau de bord propriétaire
                         </Link>
+                        <Link href="/compte/abonnement" className="block px-4 py-2 hover:bg-gray-50">
+                          Abonnement & factures
+                          </Link>
                         <Link href="/proprietaire/problemes" className="block px-4 py-2 hover:bg-gray-50">
                           Gérer un problème
                         </Link>
@@ -176,6 +179,13 @@ export default function Header() {
                 <>
                   <Link href="/proprietaire/dashboard" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
                     Tableau de bord propriétaire
+                  </Link>
+                  <Link
+                   href="/compte/abonnement"
+                   className="block hover:text-violet-600"
+                   onClick={() => setMenuOpen(false)}
+               >
+                  Abonnement & factures
                   </Link>
                   <Link href="/proprietaire/problemes" className="block hover:text-violet-600" onClick={() => setMenuOpen(false)}>
                     Gérer un problème
