@@ -3,35 +3,49 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type Props = {
-  defaultPlan?: string; // peut être un alias (proprietaire/premium/business) ou un price_…
-};
+type Props = { defaultPlan?: string };
 
-const PLAN_LABELS: Record<string, string> = {
+// 🔐 Les Price IDs publics (remplis sur Vercel) → permettent d’afficher le bon nom
+const PRICE_IDS = {
+  proprietaire: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROPRIETAIRE,
+  premium: process.env.NEXT_PUBLIC_STRIPE_PRICE_PREMIUM,
+  business: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS,
+} as const;
+
+const PLAN_LABELS: Record<keyof typeof PRICE_IDS, string> = {
   proprietaire: "Propriétaire – 14 € / mois",
   premium: "Premium – 29 € / mois",
   business: "Business – 79 € / mois",
 };
 
+// Retourne le libellé et un petit hint en-dessous
 function humanizePlan(value?: string) {
   if (!value) return { label: "Gratuit", hint: "Aucun abonnement sélectionné" };
-  const key = value.toLowerCase();
-  if (PLAN_LABELS[key]) return { label: PLAN_LABELS[key], hint: "Plan sélectionné" };
-  if (value.startsWith("price_")) return { label: "Plan sélectionné", hint: "Price ID Stripe" };
-  if (value.startsWith("prod_")) return { label: "Plan sélectionné", hint: "Product ID Stripe" };
-  return { label: "Plan sélectionné", hint: value };
+
+  const v = value.toLowerCase();
+
+  // 1) alias lisibles
+  if (v === "proprietaire") return { label: PLAN_LABELS.proprietaire, hint: "Facturé tous les mois" };
+  if (v === "premium") return { label: PLAN_LABELS.premium, hint: "Facturé tous les mois" };
+  if (v === "business") return { label: PLAN_LABELS.business, hint: "Facturé tous les mois" };
+
+  // 2) correspondance avec les Price IDs publics
+  if (value === PRICE_IDS.proprietaire) return { label: PLAN_LABELS.proprietaire, hint: "Facturé tous les mois" };
+  if (value === PRICE_IDS.premium) return { label: PLAN_LABELS.premium, hint: "Facturé tous les mois" };
+  if (value === PRICE_IDS.business) return { label: PLAN_LABELS.business, hint: "Facturé tous les mois" };
+
+  // 3) fallback générique (prod_/lookup_key/price inconnu)
+  return { label: "Plan sélectionné", hint: "Abonnement mensuel" };
 }
 
 export default function RegisterForm({ defaultPlan }: Props) {
   const [showPwd, setShowPwd] = useState(false);
-
   const planInfo = humanizePlan(defaultPlan);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
 
-    // TODO: remplace ensuite par ton vrai endpoint d’inscription en base
     const res = await fetch("/api/owners/register", {
       method: "POST",
       body: JSON.stringify({
@@ -39,7 +53,7 @@ export default function RegisterForm({ defaultPlan }: Props) {
         lastName: form.get("lastName"),
         email: form.get("email"),
         password: form.get("password"),
-        plan: form.get("plan"), // on garde le plan tel quel
+        plan: form.get("plan"), // on envoie tel quel
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -50,7 +64,6 @@ export default function RegisterForm({ defaultPlan }: Props) {
       return;
     }
 
-    // Redirection Checkout Stripe (GET) – la route sait gérer alias/price_/prod_
     const plan = String(form.get("plan") || "");
     window.location.href = plan
       ? `/api/billing/checkout?plan=${encodeURIComponent(plan)}`
@@ -77,9 +90,7 @@ export default function RegisterForm({ defaultPlan }: Props) {
       {/* Champs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="col-span-1">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Prénom
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Prénom</label>
           <input
             type="text"
             name="firstName"
@@ -89,9 +100,7 @@ export default function RegisterForm({ defaultPlan }: Props) {
           />
         </div>
         <div className="col-span-1">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Nom
-          </label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Nom</label>
           <input
             type="text"
             name="lastName"
@@ -103,10 +112,8 @@ export default function RegisterForm({ defaultPlan }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="col-span-1 sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Email
-          </label>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
             name="email"
@@ -116,10 +123,8 @@ export default function RegisterForm({ defaultPlan }: Props) {
           />
         </div>
 
-        <div className="col-span-1 sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Mot de passe
-          </label>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Mot de passe</label>
           <div className="relative">
             <input
               type={showPwd ? "text" : "password"}
@@ -144,7 +149,7 @@ export default function RegisterForm({ defaultPlan }: Props) {
         </div>
       </div>
 
-      {/* Champ plan technique (caché visuellement mais envoyé) */}
+      {/* Plan technique (caché) */}
       <input type="hidden" name="plan" value={defaultPlan || ""} />
 
       {/* Consentements */}
