@@ -1,32 +1,45 @@
+// app/api/billing/portal/route.ts
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 
-export async function POST() {
+async function baseUrl() {
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("x-forwarded-host") ?? h.get("host")!;
+  return `${proto}://${host}`;
+}
+
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ ok: false, error: "Non authentifié." }, { status: 401 });
     }
 
-    // Idéalement: retrouver customerId dans ta DB (user.stripeCustomerId)
-    const customers = await stripe.customers.list({ email: session.user.email, limit: 1 });
-    const customer =
-      customers.data[0] ??
-      (await stripe.customers.create({
-        email: session.user.email,
-        name: session.user.name ?? undefined,
-      }));
+    // 1) Retrouver (ou créer) le customer Stripe à partir de l'email
+    const email = session.user.email;
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    let customer: Stripe.Customer | null = customers.data[0] ?? null;
 
-    const portal = await stripe.billingPortal.sessions.create({
+    if (!customer) {
+      // Option: créer le customer si inexistant
+      customer = await stripe.customers.create({ email, name: session.user.name ?? undefined });
+    }
+
+    const returnUrl = `${await baseUrl()}/compte/abonnement`;
+
+    // 2) Créer une session Portail client
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: customer.id,
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/compte/abonnement`,
+      return_url: returnUrl,
     });
 
-    return NextResponse.json({ url: portal.url }, { status: 200 });
-  } catch (err: any) {
-    console.error("Portal error:", err);
-    return NextResponse.json({ error: err.message ?? "Server error" }, { status: 500 });
+    return NextResponse.redirect(portalSession.url, { status: 303 });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e.message || "Erreur serveur" }, { status: 500 });
   }
 }
