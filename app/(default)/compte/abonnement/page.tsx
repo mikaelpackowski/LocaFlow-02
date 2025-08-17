@@ -4,31 +4,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import Stripe from "stripe";
-import { Suspense } from "react";
-import SuccessNotice from "./SuccessNotice";
-// ...
-{justPaid && <SuccessNotice />}
 
 export const metadata = {
   title: "Mon abonnement – ForGesty",
 };
 
 type SubState = {
-  status: string | null; // active | trialing | past_due | canceled | unpaid | ...
-  planLabel: string | null; // ex. Proprietaire / Premium ...
+  status: string | null;
+  planLabel: string | null;
   priceId: string | null;
   currentPeriodEnd: number | null; // epoch seconds
   customerEmail: string | null;
 };
 
 async function fetchSubscriptionForUser(email: string): Promise<SubState | null> {
-  // === OPTION A: Ta base (si déjà branchée)
-  // try {
-  //   const res = await fetch(`${process.env.INTERNAL_API_URL}/subscriptions?email=${encodeURIComponent(email)}`, { cache: "no-store" });
-  //   if (res.ok) return await res.json();
-  // } catch {}
-
-  // === OPTION B: Stripe (fallback)
+  // === Fallback Stripe (si pas encore de base branchée)
   const customers = await stripe.customers.list({ email, limit: 1 });
   const customer = customers.data[0];
   if (!customer) return null;
@@ -78,6 +68,7 @@ export default async function AbonnementPage({
 }: {
   searchParams?: Promise<{ checkout?: string }>;
 }) {
+  // Next 15 : searchParams peut être Promise
   const sp = searchParams ? await searchParams : undefined;
   const justPaid = sp?.checkout === "success";
 
@@ -89,7 +80,7 @@ export default async function AbonnementPage({
         <p className="mt-2 text-gray-600">Veuillez vous connecter pour voir votre abonnement.</p>
       </main>
     );
-  }
+    }
 
   const sub = await fetchSubscriptionForUser(session.user.email);
 
@@ -97,9 +88,7 @@ export default async function AbonnementPage({
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
       <h1 className="text-2xl font-bold">Mon abonnement</h1>
 
-      {justPaid && (
-        <SuccessBanner />
-      )}
+      {justPaid && <SuccessBanner />}
 
       <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
         {sub ? (
@@ -151,10 +140,9 @@ export default async function AbonnementPage({
 }
 
 function SuccessBanner() {
+  // Bannière + redirection douce vers /dashboard
   return (
-    <Suspense>
-      {/* Client component inline via "use client" boundary */}
-      {/* eslint-disable-next-line @next/next/no-script-in-document */}
+    <>
       <script
         dangerouslySetInnerHTML={{
           __html: `
@@ -173,6 +161,6 @@ function SuccessBanner() {
           Redirection vers le tableau de bord…
         </div>
       </div>
-    </Suspense>
+    </>
   );
 }
