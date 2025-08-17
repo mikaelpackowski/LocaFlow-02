@@ -1,7 +1,7 @@
-// app/(default)/compte/abonnement/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import SuccessNotice from "@/components/SuccessNotice";
+import ManagePortalButton from "@/components/ManagePortalButton";
 import Link from "next/link";
 
 export const metadata = {
@@ -12,13 +12,11 @@ export const metadata = {
 export default async function AbonnementPage({
   searchParams,
 }: {
-  // ✅ ton projet attend un Promise pour searchParams
   searchParams?: Promise<{ success?: string }>;
 }) {
   const sp = searchParams ? await searchParams : undefined;
   const justPaid = sp?.success === "true";
 
-  // Récupère la session côté serveur
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session?.user?.email;
 
@@ -35,7 +33,6 @@ export default async function AbonnementPage({
       )}
 
       {!isLoggedIn ? (
-        // ---------- Carte quand l'utilisateur n'est pas connecté ----------
         <section className="rounded-2xl border bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Connexion requise</h2>
           <p className="mt-2 text-gray-600">
@@ -51,7 +48,6 @@ export default async function AbonnementPage({
           </div>
         </section>
       ) : (
-        // ---------- Carte quand l'utilisateur est connecté ----------
         <section className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -60,13 +56,12 @@ export default async function AbonnementPage({
                 Consultez votre statut, vos factures et gérez votre moyen de paiement.
               </p>
             </div>
-            {/* Badge statut (placeholder pour l’instant) */}
             <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
               actif
             </span>
           </div>
 
-          {/* TODO: remplace par tes vraies infos de DB si tu veux */}
+          {/* Placeholder : remplace par tes vraies infos DB/Stripe si tu veux */}
           <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-4">
               <dt className="text-xs uppercase tracking-wide text-gray-500">Plan</dt>
@@ -78,14 +73,8 @@ export default async function AbonnementPage({
             </div>
           </dl>
 
-          {/* Lien vers le portail Stripe (protégé côté serveur) */}
           <div className="mt-6">
-            <a
-              href="/api/billing/portal"
-              className="inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-50"
-            >
-              Gérer mon abonnement
-            </a>
+            <ManagePortalButton />
           </div>
         </section>
       )}
