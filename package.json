@@ -26,8 +26,8 @@
     "@heroicons/react": "^2.1.5",
   "next": "15.1.6",
   "react": "18.3.1",
-  "react-dom": "18.3.1",
-  // … tes autres dépendances
+  "react-dom": "18.3.1"
+  
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
