@@ -5,6 +5,9 @@ import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import Stripe from "stripe";
 import { Suspense } from "react";
+import SuccessNotice from "./SuccessNotice";
+// ...
+{justPaid && <SuccessNotice />}
 
 export const metadata = {
   title: "Mon abonnement – ForGesty",
