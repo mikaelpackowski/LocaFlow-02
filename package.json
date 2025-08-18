@@ -12,6 +12,7 @@
     "@headlessui/react": "^2.2.0",
     "@types/node": "^22.13.0",
     "@types/react": "19.0.8",
+    "@prisma/client": "^5.20.0",
     "@types/react-dom": "19.0.3",
     "aos": "3.0.0-beta.6",
     "dayjs": "^1.11.11",
@@ -35,6 +36,6 @@
     "ts-node": "^10.9.2"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
+    "seed": "node prisma/seed.js"
   }
 }
