@@ -1,4 +1,3 @@
-// prisma/seed.js
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
@@ -23,10 +22,7 @@ async function main() {
       title: "T2 lumineux – Nation",
       type: "APPARTEMENT",
       city: "Paris",
-      rent: 1200,
-      charges: 100,
-      bedrooms: 1,
-      surface: 42,
+      rent: 1200, charges: 100, bedrooms: 1, surface: 42,
       ...base,
       images: { create: [{ url: "https://picsum.photos/seed/apt1/800/600", alt: "Séjour" }] },
     },
@@ -38,11 +34,7 @@ async function main() {
       type: "STUDIO",
       leaseType: "MEUBLE",
       city: "Lyon",
-      rent: 690,
-      charges: 60,
-      bedrooms: 0,
-      surface: 22,
-      furnished: true,
+      rent: 690, charges: 60, bedrooms: 0, surface: 22, furnished: true,
       ...base,
       images: { create: [{ url: "https://picsum.photos/seed/apt2/800/600", alt: "Pièce de vie" }] },
     },
@@ -50,10 +42,6 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .then(() => console.log("✅ Seed terminé"))
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
