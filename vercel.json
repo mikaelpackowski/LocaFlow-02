@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm install && pnpm prisma generate && pnpm build",
+  "env": {
+    "DATABASE_URL": "@database-url"
+  },
+  "functions": {
+    "app/api/**": {
+      "maxDuration": 30
+    }
+  },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./prisma"
+}
