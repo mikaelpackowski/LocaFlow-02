@@ -4,14 +4,44 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 
+function normalizeRole(u: any): "owner" | "tenant" | null {
+  // essaie plusieurs clés possibles qui peuvent contenir le rôle
+  const raw =
+    u?.role ??
+    u?.userRole ??
+    u?.app_role ??
+    u?.type ??
+    u?.profil ??
+    u?.Role ??
+    u?.ROLE ??
+    u?.["custom:role"] ??
+    u?.["x-hasura-role"] ??
+    null;
+
+  if (!raw) return null;
+  const s = String(raw).toLowerCase().trim();
+
+  if (["owner", "proprietaire", "proprio"].includes(s)) return "owner";
+  if (["tenant", "locataire"].includes(s)) return "tenant";
+  return null;
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
 
-  const role = (session?.user as any)?.role as "owner" | "tenant" | undefined;
+  const role = normalizeRole(session?.user);
   const isOwner = role === "owner";
   const isTenant = role === "tenant";
+
+  // si rôle non détecté, tu peux choisir le fallback :
+  // - "/proprietaire/dashboard" (par défaut ci-dessous)
+  // - ou "/profil" (plus neutre)
+  const dashboardPath =
+    isOwner ? "/proprietaire/dashboard"
+    : isTenant ? "/locataire/dashboard"
+    : "/proprietaire/dashboard"; // <-- change ici si tu veux "/profil"
 
   function closeAll() {
     setMenuOpen(false);
@@ -25,12 +55,10 @@ export default function Header() {
       role="banner"
     >
       <div className="mx-auto flex w-full items-center justify-between px-4 sm:px-6 lg:px-8 h-full">
-        {/* Logo */}
         <Link href="/" className="text-xl font-bold text-gray-900" onClick={closeAll}>
           ForGesty
         </Link>
 
-        {/* Nav desktop */}
         <nav className="hidden items-center gap-6 text-sm md:flex">
           <Link href="/annonces" className="hover:text-violet-600">Annonces</Link>
           <Link href="/tarifs" className="hover:text-violet-600">Tarifs</Link>
@@ -56,10 +84,7 @@ export default function Header() {
                   {session.user?.name?.[0]?.toUpperCase() ?? "U"}
                 </span>
                 Compte
-                <svg
-                  className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`}
-                  viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-                >
+                <svg className={`h-4 w-4 transition ${accountOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path
                     fillRule="evenodd"
                     d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.17l3.71-2.94a.75.75 0 0 1 .94 1.17l-4.24 3.36a.75.75 0 0 1-.94 0L5.21 8.4a.75.75 0 0 1 .02-1.19Z"
@@ -79,25 +104,14 @@ export default function Header() {
                   <div className="border-t" />
 
                   <div className="py-1 text-sm">
-                    {/* 👉 Dashboard selon le rôle avec libellé explicite */}
-                    {isOwner && (
-                      <Link
-                        href="/proprietaire/dashboard"
-                        className="block px-4 py-2 hover:bg-gray-50"
-                        onClick={closeAll}
-                      >
-                        Dashboard propriétaire
-                      </Link>
-                    )}
-                    {isTenant && (
-                      <Link
-                        href="/locataire/dashboard"
-                        className="block px-4 py-2 hover:bg-gray-50"
-                        onClick={closeAll}
-                      >
-                        Dashboard locataire
-                      </Link>
-                    )}
+                    {/* ✅ Toujours afficher un lien Dashboard (rôle-normalisé + fallback) */}
+                    <Link
+                      href={dashboardPath}
+                      className="block px-4 py-2 hover:bg-gray-50"
+                      onClick={closeAll}
+                    >
+                      {isOwner ? "Dashboard propriétaire" : isTenant ? "Dashboard locataire" : "Tableau de bord"}
+                    </Link>
 
                     <Link
                       href="/compte/abonnement"
@@ -131,7 +145,7 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Burger mobile */}
+        {/* Burger (mobile) */}
         <button
           onClick={() => setMenuOpen(v => !v)}
           className="rounded md:hidden focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -163,17 +177,14 @@ export default function Header() {
             </Link>
           ) : (
             <>
-              {/* 👉 Dashboard rôle-spécifique (mobile) */}
-              {isOwner && (
-                <Link href="/proprietaire/dashboard" className="block hover:text-violet-600" onClick={closeAll}>
-                  Dashboard propriétaire
-                </Link>
-              )}
-              {isTenant && (
-                <Link href="/locataire/dashboard" className="block hover:text-violet-600" onClick={closeAll}>
-                  Dashboard locataire
-                </Link>
-              )}
+              {/* ✅ Lien Dashboard aussi en mobile, avec fallback */}
+              <Link
+                href={dashboardPath}
+                className="block hover:text-violet-600"
+                onClick={closeAll}
+              >
+                {isOwner ? "Dashboard propriétaire" : isTenant ? "Dashboard locataire" : "Tableau de bord"}
+              </Link>
 
               <Link href="/compte/abonnement" className="block hover:text-violet-600" onClick={closeAll}>
                 Abonnement & factures
