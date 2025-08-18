@@ -24,7 +24,25 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: echo "SELECT 1" | npx prisma db execute --stdin --url $DATABASE_URL
 
+      # 👉 Si le dossier prisma/migrations est vide, on fait db push (1ʳᵉ initialisation)
+      - name: Check if migrations exist
+        id: mig
+        run: |
+          if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations || true)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Initialize schema (db push when no migrations)
+        if: steps.mig.outputs.exists == 'false'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma db push --accept-data-loss
+
+      # 👉 Si on a des migrations, on les déploie normalement
       - name: Apply migrations (deploy)
+        if: steps.mig.outputs.exists == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate deploy
