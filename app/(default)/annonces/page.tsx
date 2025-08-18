@@ -21,7 +21,6 @@ type SP = {
 };
 
 export default async function AnnoncesPage(props: any) {
-  // ⬅️ pas de type sur le paramètre !
   const sp = (props?.searchParams ?? {}) as SP;
 
   const q = (sp.q || "").trim();
@@ -31,6 +30,9 @@ export default async function AnnoncesPage(props: any) {
   const page = Number(sp.page ?? 1);
   const limit = Number(sp.limit ?? 12);
 
+  // ✅ Normalise pour les composants qui attendent "" | "price_asc" | "price_desc" | undefined
+  const sortSafe: "" | "price_asc" | "price_desc" | undefined =
+    sort === "price_asc" || sort === "price_desc" ? sort : "";
 
   // Construire la query POUR L’API uniquement avec les champs renseignés
   const qs = new URLSearchParams();
@@ -60,14 +62,14 @@ export default async function AnnoncesPage(props: any) {
         Explorez les biens disponibles et filtrez selon vos critères.
       </p>
 
-      {/* Barre de recherche (garde tes props actuelles si besoin) */}
+      {/* Barre de recherche */}
       <SearchBar
         defaultQuery={q}
         defaultMax={max}
         defaultType={type || "all"}
-        defaultSort={sort}
-        cities={[]}   // si tu en as, passe-les ici
-        types={[]}    // idem
+        defaultSort={sortSafe}
+        cities={[]}    // passe tes vraies listes si tu en as
+        types={[]}     // idem
       />
 
       {/* Tri (soumet juste sort=... en GET) */}
@@ -76,7 +78,7 @@ export default async function AnnoncesPage(props: any) {
           <input type="hidden" name="q" defaultValue={q} />
           <input type="hidden" name="max" defaultValue={max} />
           <input type="hidden" name="type" defaultValue={type || "all"} />
-          <SortSelect defaultValue={sort} />
+          <SortSelect defaultValue={sortSafe} />
         </form>
       </div>
 
@@ -99,7 +101,7 @@ export default async function AnnoncesPage(props: any) {
                 bedrooms={l.bedrooms}
                 surface={l.surface}
                 furnished={l.furnished}
-                image={l.image ?? null} // API renvoie image: string|null
+                image={l.image ?? null}
               />
             ))}
           </div>
@@ -109,7 +111,7 @@ export default async function AnnoncesPage(props: any) {
             page={data.page}
             pages={data.pages}
             limit={data.limit}
-            searchParams={{ q, max, type, sort }}
+            searchParams={{ q, max, type, sort: sortSafe ?? "" }}
           />
         </>
       )}
