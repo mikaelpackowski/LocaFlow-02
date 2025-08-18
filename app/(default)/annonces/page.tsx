@@ -20,20 +20,17 @@ type SP = {
   limit?: string;
 };
 
-export default async function AnnoncesPage({
-  searchParams,
-}: {
-  searchParams?: SP;
-}) {
-  const sp = searchParams ?? {};
+export default async function AnnoncesPage(props: any) {
+  // ⬅️ pas de type sur le paramètre !
+  const sp = (props?.searchParams ?? {}) as SP;
 
-  // Valeurs lues depuis l’URL – mais on ne filtre que si non vides
   const q = (sp.q || "").trim();
   const max = (sp.max || "").trim();
-  const type = (sp.type || "").trim(); // "all" => ignoré
+  const type = (sp.type || "").trim();
   const sort = (sp.sort || "").trim();
   const page = Number(sp.page ?? 1);
   const limit = Number(sp.limit ?? 12);
+
 
   // Construire la query POUR L’API uniquement avec les champs renseignés
   const qs = new URLSearchParams();
