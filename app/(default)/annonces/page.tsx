@@ -4,7 +4,7 @@ import SearchBar from "@/components/SearchBar";
 import SortSelect from "@/components/SortSelect";
 
 export const metadata = {
-  title: "Annonces | LocaFlow",
+  title: "Annonces | ForGesty",
   description: "Trouvez votre logement et filtrez selon vos critères.",
 };
 
