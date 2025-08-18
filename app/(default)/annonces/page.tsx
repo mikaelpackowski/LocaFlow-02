@@ -2,50 +2,59 @@
 import ListingCard from "@/components/ListingCard";
 import SearchBar from "@/components/SearchBar";
 import SortSelect from "@/components/SortSelect";
-import { LISTINGS } from "@/utils/listings";
-
-export const dynamic = "force-dynamic"; // pas de cache statique
 
 export const metadata = {
-  title: "Annonces | Forgesty",
+  title: "Annonces | LocaFlow",
   description: "Trouvez votre logement et filtrez selon vos critères.",
 };
 
-export default async function AnnoncesPage(props: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await props.searchParams;
+// Important pour forcer un rendu dynamique et éviter le cache côté Vercel
+export const dynamic = "force-dynamic";
 
-  const q = sp?.q ?? "";
-  const max = sp?.max ?? "";
-  const type = sp?.type ?? "all";
-  const sort = (sp?.sort as "price_asc" | "price_desc" | undefined) ?? undefined;
-  const page = Number(sp?.page ?? 1);
-  const limit = Number(sp?.limit ?? 9);
+type SP = {
+  q?: string;
+  max?: string;
+  type?: string;
+  sort?: string;
+  page?: string;
+  limit?: string;
+};
 
-  // ✅ fetch RELATIF vers la même origin (évite headers / edge soucis)
-  const url = new URL("/api/annonces", "http://internal"); // base dummy, on n'envoie pas cette origin
-  if (q) url.searchParams.set("q", String(q));
-  if (max) url.searchParams.set("max", String(max));
-  if (type && type !== "all") url.searchParams.set("type", String(type));
-  if (sort) url.searchParams.set("sort", sort);
-  url.searchParams.set("page", String(page));
-  url.searchParams.set("limit", String(limit));
+export default async function AnnoncesPage({
+  searchParams,
+}: {
+  searchParams?: SP;
+}) {
+  const sp = searchParams ?? {};
 
+  // Valeurs lues depuis l’URL – mais on ne filtre que si non vides
+  const q = (sp.q || "").trim();
+  const max = (sp.max || "").trim();
+  const type = (sp.type || "").trim(); // "all" => ignoré
+  const sort = (sp.sort || "").trim();
+  const page = Number(sp.page ?? 1);
+  const limit = Number(sp.limit ?? 12);
+
+  // Construire la query POUR L’API uniquement avec les champs renseignés
+  const qs = new URLSearchParams();
+  if (q) qs.set("q", q);
+  if (max) qs.set("max", max);
+  if (type && type !== "all") qs.set("type", type);
+  if (sort) qs.set("sort", sort);
+  qs.set("page", String(page));
+  qs.set("limit", String(limit));
+
+  // Fetch relatif (OK côté serveur Next 15)
   let data: any = { items: [], total: 0, page: 1, pages: 1, limit };
   try {
-    const res = await fetch(`/api/annonces?${url.searchParams.toString()}`, {
+    const res = await fetch(`/api/annonces${qs.toString() ? `?${qs}` : ""}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error(`API status ${res.status}`);
     data = await res.json();
   } catch (e) {
-    // On rend quand même la page, avec message
     console.error("Erreur fetch /api/annonces:", e);
   }
-
-  const cities = Array.from(
-    new Set(LISTINGS.flatMap((l) => [l.city, l.district].filter(Boolean) as string[])),
-  ).sort((a, b) => a.localeCompare(b, "fr"));
-  const types = Array.from(new Set(LISTINGS.map((l) => l.type)));
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
@@ -54,25 +63,27 @@ export default async function AnnoncesPage(props: { searchParams: Promise<Record
         Explorez les biens disponibles et filtrez selon vos critères.
       </p>
 
+      {/* Barre de recherche (garde tes props actuelles si besoin) */}
       <SearchBar
-        defaultQuery={String(q)}
-        defaultMax={String(max)}
-        defaultType={String(type)}
-        defaultSort={sort ?? ""}
-        cities={cities}
-        types={types}
+        defaultQuery={q}
+        defaultMax={max}
+        defaultType={type || "all"}
+        defaultSort={sort}
+        cities={[]}   // si tu en as, passe-les ici
+        types={[]}    // idem
       />
 
+      {/* Tri (soumet juste sort=... en GET) */}
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
-          <input type="hidden" name="q" defaultValue={String(q)} />
-          <input type="hidden" name="max" defaultValue={String(max)} />
-          <input type="hidden" name="type" defaultValue={String(type)} />
-          <SortSelect defaultValue={sort ?? ""} />
+          <input type="hidden" name="q" defaultValue={q} />
+          <input type="hidden" name="max" defaultValue={max} />
+          <input type="hidden" name="type" defaultValue={type || "all"} />
+          <SortSelect defaultValue={sort} />
         </form>
       </div>
 
-      {(!data?.items || data.items.length === 0) ? (
+      {data.items.length === 0 ? (
         <p className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
         </p>
@@ -91,7 +102,7 @@ export default async function AnnoncesPage(props: { searchParams: Promise<Record
                 bedrooms={l.bedrooms}
                 surface={l.surface}
                 furnished={l.furnished}
-                image={l.image ?? null}
+                image={l.image ?? null} // API renvoie image: string|null
               />
             ))}
           </div>
@@ -101,12 +112,7 @@ export default async function AnnoncesPage(props: { searchParams: Promise<Record
             page={data.page}
             pages={data.pages}
             limit={data.limit}
-            searchParams={{
-              q: String(q || ""),
-              max: String(max || ""),
-              type: String(type || ""),
-              sort: String(sort || ""),
-            }}
+            searchParams={{ q, max, type, sort }}
           />
         </>
       )}
@@ -146,19 +152,27 @@ function Pagination({
 
   return (
     <nav className="mt-10 flex items-center justify-center gap-2">
-      <a href={makeLink(Math.max(1, page - 1))} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">
+      <a
+        href={makeLink(Math.max(1, page - 1))}
+        className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+      >
         ← Précédent
       </a>
       {pagesToShow.map((p) => (
         <a
           key={p}
           href={makeLink(p)}
-          className={`rounded-lg px-3 py-2 text-sm ${p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"}`}
+          className={`rounded-lg px-3 py-2 text-sm ${
+            p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"
+          }`}
         >
           {p}
         </a>
       ))}
-      <a href={makeLink(Math.min(pages, page + 1))} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">
+      <a
+        href={makeLink(Math.min(pages, page + 1))}
+        className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+      >
         Suivant →
       </a>
     </nav>
