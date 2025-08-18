@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
-export const runtime = "nodejs"; // ⬅️ OBLIGATOIRE pour Prisma en prod
+export const runtime = "nodejs"; // Prisma nécessite le runtime Node.js en prod
 
 export default async function AnnonceDetailPage(
   props: { params: Promise<{ id: string }> } // Next 15: params est une Promise
@@ -61,8 +61,8 @@ export default async function AnnonceDetailPage(
         )}
       </main>
     );
-  } catch (e) {
-    // En cas d’erreur DB/connexion → 404 pour éviter le crash
+  } catch {
+    // Si la DB tombe/connexion coupée -> évite l'erreur “Application error” en prod
     return notFound();
   }
 }
