@@ -1,86 +1,44 @@
-import { notFound } from "next/navigation";
+// app/(default)/annonces/[id]/page.tsx
 import { prisma } from "@/lib/prisma";
+import ListingCard from "@/components/ListingCard";
 
-type Listing = {
-  id: string;
-  title: string;
-  city: string;
-  type: string;
-  rent: number;
-  charges: number;
-  bedrooms: number;
-  surface: number;
-  furnished: boolean;
-  description: string;
-  images?: { url: string; alt?: string }[];
-};
+export default async function AnnoncePage(props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params; // ✅ on attend la promesse
 
-export default async function AnnonceDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
   const listing = await prisma.listing.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { images: true },
   });
 
-  if (!listing) return notFound();
+  if (!listing) {
+    return <div className="p-10 text-center text-gray-500">Annonce introuvable.</div>;
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-14">
-      {/* Titre + Prix */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{listing.title}</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          {listing.city} • {listing.type}
-        </p>
-        <div className="mt-3 text-2xl font-semibold text-indigo-600">
-          {listing.rent.toLocaleString("fr-FR")} €
-          <span className="text-gray-500 text-base"> +{listing.charges} € charges</span>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold text-gray-900">{listing.title}</h1>
+      <p className="mt-2 text-gray-600">{listing.city} – {listing.type}</p>
 
-      {/* Image principale */}
-      <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100">
+      <div className="mt-6 aspect-[4/3] w-full bg-gray-100 rounded-xl overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {listing.images?.[0]?.url ? (
+        {listing.images?.[0] ? (
           <img
             src={listing.images[0].url}
-            alt={listing.images[0]?.alt || listing.title}
+            alt={listing.images[0].alt ?? listing.title}
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="h-full w-full grid place-items-center text-gray-400">
-            Pas d’image
-          </div>
+          <div className="h-full w-full grid place-items-center text-gray-400">Aucune image</div>
         )}
       </div>
 
-      {/* Détails */}
-      <div className="mt-6 grid grid-cols-2 gap-6 text-gray-700">
-        <div>
-          <p>
-            <span className="font-semibold">Surface :</span> {listing.surface} m²
-          </p>
-          <p>
-            <span className="font-semibold">Chambres :</span> {listing.bedrooms}
-          </p>
-        </div>
-        <div>
-          <p>
-            <span className="font-semibold">Meublé :</span>{" "}
-            {listing.furnished ? "Oui" : "Non"}
-          </p>
-        </div>
+      <div className="mt-6 text-lg">
+        {listing.description}
       </div>
 
-      {/* Description */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Description</h2>
-        <p className="text-gray-600 whitespace-pre-line">
-          {listing.description}
-        </p>
+      <div className="mt-6 flex justify-between text-gray-800 font-medium">
+        <span>Loyer : {listing.rent} € + {listing.charges} € charges</span>
+        <span>{listing.surface} m² – {listing.bedrooms} chambres</span>
       </div>
     </main>
   );
