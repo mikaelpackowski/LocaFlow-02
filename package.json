@@ -14,26 +14,27 @@
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
     "aos": "3.0.0-beta.6",
+    "dayjs": "^1.11.11",
     "next": "15.1.6",
     "next-auth": "^4.24.7",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "typescript": "^5.7.3",
-    "zod": "^3.23.8",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "resend": "^3.2.0",
     "stripe": "^16.0.0",
-    "dayjs": "^1.11.11",
-    "@heroicons/react": "^2.1.5",
-  "next": "15.1.6",
-  "react": "18.3.1",
-  "react-dom": "18.3.1"
-  
+    "typescript": "^5.7.3",
+    "zod": "^3.23.8",
+    "@heroicons/react": "^2.1.5"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.0.3",
     "@types/aos": "^3.0.7",
     "postcss": "^8.5.1",
-    "tailwindcss": "^4.0.3"
+    "tailwindcss": "^4.0.3",
+    "prisma": "^5.20.0",
+    "ts-node": "^10.9.2"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
   }
 }
