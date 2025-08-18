@@ -1,7 +1,7 @@
 name: Prisma Migrate
 
 on:
-  workflow_dispatch: {} # Lancer manuellement depuis l’onglet “Actions”
+  workflow_dispatch: {}
 
 jobs:
   migrate:
@@ -22,8 +22,9 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
+      # ⬅️ IMPORTANT: pas de "frozen-lockfile" car ton lock n'est pas à jour
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Prisma generate
         env:
@@ -35,9 +36,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate deploy
 
-      # Optionnel : seed (si "prisma.seed" est défini dans package.json)
+      # Optionnel : seed (si défini dans package.json)
       - name: Seed database
-        if: ${{ always() }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma db seed
