@@ -63,10 +63,16 @@ export default async function AnnoncesPage(props: any) {
     console.error("Erreur fetch /api/annonces:", e);
   }
 
-  return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
-      <h1 className="text-3xl font-bold text-gray-900 text-center">Annonces</h1>
-      <p className="mt-2 text-center text-gray-500">
+ return (
+  <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+    <header className="mx-auto max-w-3xl text-center">
+      <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+        Annonces{" "}
+        <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+          ForGesty
+        </span>
+      </h1>
+      <p className="mt-3 text-gray-600">
         Explorez les biens disponibles et filtrez selon vos critères.
       </p>
 
