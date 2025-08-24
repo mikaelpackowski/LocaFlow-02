@@ -2,13 +2,13 @@
 import ListingCard from "@/components/ListingCard";
 import SearchBar from "@/components/SearchBar";
 import SortSelect from "@/components/SortSelect";
+import { headers } from "next/headers";
 
 export const metadata = {
   title: "Annonces | ForGesty",
   description: "Trouvez votre logement et filtrez selon vos critères.",
 };
 
-// Important pour forcer un rendu dynamique et éviter le cache côté Vercel
 export const dynamic = "force-dynamic";
 
 type SP = {
@@ -20,6 +20,14 @@ type SP = {
   limit?: string;
 };
 
+// Next 15 : headers() est async
+async function buildBaseUrl() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
 export default async function AnnoncesPage(props: any) {
   const sp = (props?.searchParams ?? {}) as SP;
 
@@ -30,11 +38,10 @@ export default async function AnnoncesPage(props: any) {
   const page = Number(sp.page ?? 1);
   const limit = Number(sp.limit ?? 12);
 
-  // ✅ Normalise pour les composants qui attendent "" | "price_asc" | "price_desc" | undefined
   const sortSafe: "" | "price_asc" | "price_desc" | undefined =
     sort === "price_asc" || sort === "price_desc" ? sort : "";
 
-  // Construire la query POUR L’API uniquement avec les champs renseignés
+  // Query string pour l’API : on n’envoie que les champs renseignés
   const qs = new URLSearchParams();
   if (q) qs.set("q", q);
   if (max) qs.set("max", max);
@@ -43,12 +50,13 @@ export default async function AnnoncesPage(props: any) {
   qs.set("page", String(page));
   qs.set("limit", String(limit));
 
-  // Fetch relatif (OK côté serveur Next 15)
+  // ✅ FETCh ABSOLU (fiable en prod)
+  const base = await buildBaseUrl();
+  const apiUrl = `${base}/api/annonces${qs.toString() ? `?${qs.toString()}` : ""}`;
+
   let data: any = { items: [], total: 0, page: 1, pages: 1, limit };
   try {
-    const res = await fetch(`/api/annonces${qs.toString() ? `?${qs}` : ""}`, {
-      cache: "no-store",
-    });
+    const res = await fetch(apiUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`API status ${res.status}`);
     data = await res.json();
   } catch (e) {
@@ -62,17 +70,15 @@ export default async function AnnoncesPage(props: any) {
         Explorez les biens disponibles et filtrez selon vos critères.
       </p>
 
-      {/* Barre de recherche */}
       <SearchBar
         defaultQuery={q}
         defaultMax={max}
         defaultType={type || "all"}
         defaultSort={sortSafe}
-        cities={[]}    // passe tes vraies listes si tu en as
-        types={[]}     // idem
+        cities={[]}
+        types={[]}
       />
 
-      {/* Tri (soumet juste sort=... en GET) */}
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
           <input type="hidden" name="q" defaultValue={q} />
@@ -82,10 +88,13 @@ export default async function AnnoncesPage(props: any) {
         </form>
       </div>
 
-      {data.items.length === 0 ? (
-        <p className="mt-10 text-center text-gray-500">
+      {(!data?.items || data.items.length === 0) ? (
+        <div className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
-        </p>
+          <div className="mt-3 text-xs">
+            (Debug&nbsp;: <a href={apiUrl} className="underline text-indigo-600" target="_blank">voir JSON API</a>)
+          </div>
+        </div>
       ) : (
         <>
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -161,9 +170,7 @@ function Pagination({
         <a
           key={p}
           href={makeLink(p)}
-          className={`rounded-lg px-3 py-2 text-sm ${
-            p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"
-          }`}
+          className={`rounded-lg px-3 py-2 text-sm ${p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"}`}
         >
           {p}
         </a>
