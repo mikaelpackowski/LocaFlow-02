@@ -26,50 +26,55 @@ export default async function AnnoncesPage({ searchParams }: any) {
   const sp = (searchParams ?? {}) as Record<string, string | string[] | undefined>;
 
   const q = toStr(sp.q).trim();
+  const city = toStr(sp.city).trim();          // ← new
   const max = toStr(sp.max).trim();
   const type = toStr(sp.type).trim();
   const sort = toStr(sp.sort).trim();
   const page = Number(toStr(sp.page) || 1);
   const limit = Number(toStr(sp.limit) || 12);
+
   const sortSafe: "" | "price_asc" | "price_desc" =
     sort === "price_asc" || sort === "price_desc" ? (sort as any) : "";
 
   const base = await buildBaseUrl();
 
-  // --- META (villes/types)
+  // --- META (villes/types) via endpoint dédié ---
   let cities: string[] = [];
   let types: string[] = [];
   try {
-    const metaRes = await fetch(`${base}/api/annonces?limit=500`, { cache: "no-store" });
+    const metaRes = await fetch(`${base}/api/annonces/meta`, { cache: "no-store" });
     if (metaRes.ok) {
       const meta = await metaRes.json();
-      const all = Array.isArray(meta.items) ? meta.items : [];
-      const citySet = new Set<string>();
-      const typeSet = new Set<string>();
-      for (const it of all) {
-        if (it?.city) citySet.add(it.city);
-        if (it?.type) typeSet.add(it.type);
-      }
-      cities = Array.from(citySet).sort((a, b) => a.localeCompare(b, "fr"));
-      types = Array.from(typeSet).sort((a, b) => a.localeCompare(b, "fr"));
+      cities = Array.isArray(meta.cities) ? meta.cities : [];
+      types = Array.isArray(meta.types) ? meta.types : [];
     }
-  } catch {}
+  } catch {
+    // silencieux
+  }
 
-  // --- DATA
+  // --- DATA : construire l'URL de l'API avec les filtres réellement renseignés
   const qs = new URLSearchParams();
   if (q) qs.set("q", q);
+  if (city) qs.set("city", city);              // ← new
   if (max) qs.set("max", max);
   if (type && type !== "all") qs.set("type", type);
   if (sortSafe) qs.set("sort", sortSafe);
   qs.set("page", String(page));
   qs.set("limit", String(limit));
+
   const apiUrl = `${base}/api/annonces${qs.toString() ? `?${qs.toString()}` : ""}`;
 
-  let data: any = { items: [], total: 0, page: 1, pages: 1, limit };
+  // fetch + parsing défensif
+  let items: any[] = [];
+  let total = 0;
+  let pages = 1;
+
   try {
     const res = await fetch(apiUrl, { cache: "no-store" });
-    if (!res.ok) throw new Error(`API status ${res.status}`);
-    data = await res.json();
+    const json = await res.json();
+    items = Array.isArray(json?.items) ? json.items : [];
+    total = typeof json?.total === "number" ? json.total : items.length;
+    pages = typeof json?.pages === "number" ? json.pages : 1;
   } catch (e) {
     console.error("Erreur fetch /api/annonces:", e);
   }
@@ -100,13 +105,14 @@ export default async function AnnoncesPage({ searchParams }: any) {
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
           <input type="hidden" name="q" defaultValue={q} />
+          <input type="hidden" name="city" defaultValue={city} />         {/* ← new */}
           <input type="hidden" name="max" defaultValue={max} />
           <input type="hidden" name="type" defaultValue={type || "all"} />
           <SortSelect defaultValue={sortSafe} />
         </form>
       </div>
 
-      {!data?.items || data.items.length === 0 ? (
+      {items.length === 0 ? (
         <div className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
           <div className="mt-3 text-xs">
@@ -120,7 +126,7 @@ export default async function AnnoncesPage({ searchParams }: any) {
       ) : (
         <>
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((l: any) => (
+            {items.map((l: any) => (
               <ListingCard
                 key={l.id}
                 id={l.id}
@@ -138,11 +144,11 @@ export default async function AnnoncesPage({ searchParams }: any) {
           </div>
 
           <Pagination
-            total={data.total}
-            page={data.page}
-            pages={data.pages}
-            limit={data.limit}
-            searchParams={{ q, max, type, sort: sortSafe || "" }}
+            total={total}
+            page={page}
+            pages={pages}
+            limit={limit}
+            searchParams={{ q, city, max, type, sort: sortSafe || "" }}  // ← city propagée
           />
         </>
       )}
@@ -168,6 +174,7 @@ function Pagination({
   const makeLink = (p: number) => {
     const sp = new URLSearchParams(searchParams);
     if (!sp.get("q")) sp.delete("q");
+    if (!sp.get("city")) sp.delete("city");          // ← new
     if (!sp.get("max")) sp.delete("max");
     if (!sp.get("type") || sp.get("type") === "all") sp.delete("type");
     if (!sp.get("sort")) sp.delete("sort");
