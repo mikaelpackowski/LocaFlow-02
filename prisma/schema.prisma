@@ -87,3 +87,85 @@ model Application {
   message   String?
   createdAt DateTime @default(now())
 }
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  PREQUALIFIED   // scoring ok, peut réserver une visite
+  REJECTED
+  APPROVED       // final accepté par le proprio
+}
+
+enum DocumentStatus {
+  PENDING
+  VALID
+  INVALID
+}
+
+enum DocumentType {
+  IDENTITE
+  JUSTIF_DOMICILE
+  CONTRAT_TRAVAIL
+  BULLETIN_SALAIRE_1
+  BULLETIN_SALAIRE_2
+  BULLETIN_SALAIRE_3
+  AVIS_IMPOSITION
+  ATTESTATION_ETUDIANT
+  GARANT_IDENTITE
+  GARANT_JUSTIF_DOMICILE
+  GARANT_BULLETIN_1
+  GARANT_BULLETIN_2
+  GARANT_BULLETIN_3
+  AUTRE
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  listingId     String
+  listing       Listing           @relation(fields: [listingId], references: [id])
+  applicantId   String            // Supabase Auth user id
+  applicant     User              @relation(fields: [applicantId], references: [id])
+  status        ApplicationStatus @default(DRAFT)
+  score         Int               @default(0)
+  note          String?
+  visitSlotId   String?
+  visitSlot     VisitSlot?        @relation(fields: [visitSlotId], references: [id])
+
+  documents     ApplicationDocument[]
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([listingId, applicantId])
+}
+
+model ApplicationDocument {
+  id            String         @id @default(cuid())
+  applicationId String
+  application   Application    @relation(fields: [applicationId], references: [id])
+
+  type          DocumentType
+  url           String
+  status        DocumentStatus  @default(PENDING)
+  reason        String?         // si INVALID : pourquoi
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model VisitSlot {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id])
+
+  start      DateTime
+  end        DateTime
+  capacity   Int       @default(1)
+  booked     Int       @default(0)
+
+  applications Application[]
+
+  createdAt  DateTime @default(now())
+
+  @@index([listingId, start])
+}
