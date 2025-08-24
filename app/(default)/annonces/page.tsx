@@ -75,7 +75,7 @@ export default async function AnnoncesPage({ searchParams }: any) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 pt-24 md:pt-28 pb-14">
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
           Annonces{" "}
