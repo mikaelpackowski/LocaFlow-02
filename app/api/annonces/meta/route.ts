@@ -6,28 +6,25 @@ export const runtime = "nodejs";
 // GET /api/annonces/meta -> { cities: string[], types: string[] }
 export async function GET() {
   try {
-    // Deux requêtes distinctes pour obtenir des valeurs uniques
     const [cityRows, typeRows] = await Promise.all([
       prisma.listing.findMany({
         select: { city: true },
-        where: { city: { not: null } },
         distinct: ["city"],
       }),
       prisma.listing.findMany({
         select: { type: true },
-        where: { type: { not: null } },
         distinct: ["type"],
       }),
     ]);
 
     const cities = cityRows
-      .map((r) => r.city!)
-      .filter(Boolean)
+      .map((r) => r.city) // city non-nullable -> string
+      .filter((v) => !!v && v.trim().length > 0)
       .sort((a, b) => a.localeCompare(b, "fr"));
 
     const types = typeRows
-      .map((r) => r.type!)
-      .filter(Boolean)
+      .map((r) => r.type) // type non-nullable -> string
+      .filter((v) => !!v && v.trim().length > 0)
       .sort((a, b) => a.localeCompare(b, "fr"));
 
     return NextResponse.json({ cities, types });
