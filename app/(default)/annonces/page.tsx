@@ -11,16 +11,12 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-type SP = {
-  q?: string;
-  max?: string;
-  type?: string;
-  sort?: string;
-  page?: string;
-  limit?: string;
-};
+// Normalise string | string[] | undefined -> string
+function toStr(v: string | string[] | undefined): string {
+  return Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
+}
 
-// Next 15 : headers() est async
+// Base URL fiable (Next 15: headers() est async)
 async function buildBaseUrl() {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -28,32 +24,30 @@ async function buildBaseUrl() {
   return `${proto}://${host}`;
 }
 
+// ✅ signature conforme à l’App Router
 export default async function AnnoncesPage({
   searchParams,
 }: {
-  searchParams?: SP;
+  searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const sp = (searchParams ?? {}) as SP;
+  const sp = searchParams ?? {};
 
-  const q = (sp.q || "").trim();
-  const max = (sp.max || "").trim();
-  const type = (sp.type || "").trim();
-  const sort = (sp.sort || "").trim();
-  const page = Number(sp.page ?? 1);
-  const limit = Number(sp.limit ?? 12);
+  const q = toStr(sp.q).trim();
+  const max = toStr(sp.max).trim();
+  const type = toStr(sp.type).trim();
+  const sort = toStr(sp.sort).trim();
+  const page = Number(toStr(sp.page) || 1);
+  const limit = Number(toStr(sp.limit) || 12);
 
   const sortSafe: "" | "price_asc" | "price_desc" =
     sort === "price_asc" || sort === "price_desc" ? (sort as any) : "";
 
-  // ---- META : récupérer toutes les annonces (limitées) pour remplir villes/types
+  // ---- META : remplir villes/types
   const base = await buildBaseUrl();
-
   let cities: string[] = [];
   let types: string[] = [];
   try {
-    const metaRes = await fetch(`${base}/api/annonces?limit=500`, {
-      cache: "no-store",
-    });
+    const metaRes = await fetch(`${base}/api/annonces?limit=500`, { cache: "no-store" });
     if (metaRes.ok) {
       const meta = await metaRes.json();
       const all = Array.isArray(meta.items) ? meta.items : [];
@@ -67,10 +61,10 @@ export default async function AnnoncesPage({
       types = Array.from(typeSet).sort((a, b) => a.localeCompare(b, "fr"));
     }
   } catch {
-    // silencieux : listes vides si échec
+    // silencieux
   }
 
-  // ---- DATA : construire la query pour l’API filtrée
+  // ---- DATA : annonces filtrées
   const qs = new URLSearchParams();
   if (q) qs.set("q", q);
   if (max) qs.set("max", max);
@@ -92,7 +86,7 @@ export default async function AnnoncesPage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
-      {/* -------- Header (comme Tarifs) ---------- */}
+      {/* Header aligné sur Tarifs */}
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
           Annonces{" "}
@@ -105,7 +99,7 @@ export default async function AnnoncesPage({
         </p>
       </header>
 
-      {/* -------- Barre de recherche -------- */}
+      {/* Barre de recherche alimentée */}
       <SearchBar
         defaultQuery={q}
         defaultMax={max}
@@ -115,7 +109,7 @@ export default async function AnnoncesPage({
         types={types}
       />
 
-      {/* -------- Tri “Trier par…” -------- */}
+      {/* Tri */}
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
           <input type="hidden" name="q" defaultValue={q} />
@@ -125,17 +119,13 @@ export default async function AnnoncesPage({
         </form>
       </div>
 
-      {/* -------- Liste -------- */}
+      {/* Liste / Pagination */}
       {!data?.items || data.items.length === 0 ? (
         <div className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
           <div className="mt-3 text-xs">
             (Debug :{" "}
-            <a
-              href={apiUrl}
-              className="underline text-indigo-600"
-              target="_blank"
-            >
+            <a href={apiUrl} className="underline text-indigo-600" target="_blank" rel="noreferrer">
               voir JSON API
             </a>
             )
@@ -166,7 +156,7 @@ export default async function AnnoncesPage({
             page={data.page}
             pages={data.pages}
             limit={data.limit}
-            searchParams={{ q, max, type, sort: sortSafe ?? "" }}
+            searchParams={{ q, max, type, sort: sortSafe || "" }}
           />
         </>
       )}
@@ -206,27 +196,19 @@ function Pagination({
 
   return (
     <nav className="mt-10 flex items-center justify-center gap-2">
-      <a
-        href={makeLink(Math.max(1, page - 1))}
-        className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-      >
+      <a href={makeLink(Math.max(1, page - 1))} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">
         ← Précédent
       </a>
       {pagesToShow.map((p) => (
         <a
           key={p}
           href={makeLink(p)}
-          className={`rounded-lg px-3 py-2 text-sm ${
-            p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"
-          }`}
+          className={`rounded-lg px-3 py-2 text-sm ${p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"}`}
         >
           {p}
         </a>
       ))}
-      <a
-        href={makeLink(Math.min(pages, page + 1))}
-        className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-      >
+      <a href={makeLink(Math.min(pages, page + 1))} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">
         Suivant →
       </a>
     </nav>
