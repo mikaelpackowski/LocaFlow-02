@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import ImageUploader from "@/components/ImageUploader";
 
 type FormState = {
@@ -36,6 +37,7 @@ const initial: FormState = {
 };
 
 export default function NewListingPage() {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>(initial);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +54,6 @@ export default function NewListingPage() {
     setOkMsg(null);
     setSubmitting(true);
     try {
-      // Construction du payload pour POST /api/annonces
       const payload: any = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -67,7 +68,7 @@ export default function NewListingPage() {
         furnished: Boolean(form.furnished),
         status: form.status,
         availableAt: form.availableAt ? new Date(form.availableAt).toISOString() : null,
-        images, // URLs publiques renvoyées par le composant d'upload
+        images, // ordre = cover en premier
       };
 
       const res = await fetch("/api/annonces", {
@@ -85,8 +86,12 @@ export default function NewListingPage() {
       }
 
       setOkMsg("Annonce créée avec succès 🎉");
-      setForm(initial);
-      setImages([]);
+      // Redirection après 800 ms (petit feedback visuel), vers la liste ou détail si dispo
+      setTimeout(() => {
+        const id = json?.listing?.id;
+        if (id) router.push(`/annonces`); // change en `/annonces/${id}` si tu as la page détail
+        else router.push(`/annonces`);
+      }, 800);
     } catch (e: any) {
       setError(e?.message || "Erreur inconnue");
     } finally {
@@ -94,12 +99,12 @@ export default function NewListingPage() {
     }
   }
 
+  const cover = images[0];
+
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Déposer une annonce</h1>
-      <p className="text-gray-600 mt-2">
-        Renseignez les informations ci-dessous. Les photos sont envoyées sur Supabase Storage.
-      </p>
+      <p className="text-gray-600 mt-2">Ajoutez vos informations et photos, définissez une couverture, puis publiez.</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-6">
         {/* Titre */}
@@ -143,7 +148,6 @@ export default function NewListingPage() {
               <option value="LOCAL">Local</option>
             </select>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Type de bail *</label>
             <select
@@ -157,7 +161,6 @@ export default function NewListingPage() {
               <option value="MEUBLE">Meublé</option>
             </select>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Ville *</label>
             <input
@@ -168,7 +171,6 @@ export default function NewListingPage() {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Adresse</label>
             <input
@@ -194,7 +196,6 @@ export default function NewListingPage() {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Charges (€) *</label>
             <input
@@ -207,7 +208,6 @@ export default function NewListingPage() {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Surface (m²) *</label>
             <input
@@ -220,7 +220,6 @@ export default function NewListingPage() {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Chambres</label>
             <input
@@ -232,7 +231,6 @@ export default function NewListingPage() {
               onChange={(e) => update("bedrooms", e.target.value)}
             />
           </div>
-
           <div className="flex items-end">
             <label className="inline-flex items-center gap-2 mt-6">
               <input
@@ -243,7 +241,6 @@ export default function NewListingPage() {
               <span>Meublé</span>
             </label>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Disponible le</label>
             <input
@@ -253,7 +250,6 @@ export default function NewListingPage() {
               onChange={(e) => update("availableAt", e.target.value)}
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Statut</label>
             <select
@@ -267,8 +263,34 @@ export default function NewListingPage() {
           </div>
         </div>
 
-        {/* Upload images */}
+        {/* Upload images (retourne les URLs dans l'ordre, cover en premier) */}
         <ImageUploader onChange={setImages} />
+
+        {/* Aperçu rapide */}
+        <section className="mt-6 rounded-xl border p-4">
+          <h2 className="font-semibold mb-3">Aperçu</h2>
+          <div className="flex gap-4">
+            {cover ? (
+              <img src={cover} alt="cover" className="w-40 h-28 object-cover rounded border" />
+            ) : (
+              <div className="w-40 h-28 rounded border grid place-items-center text-xs text-gray-500">
+                Pas de couverture
+              </div>
+            )}
+            <div className="text-sm">
+              <div className="font-medium">{form.title || "Titre de l’annonce"}</div>
+              <div className="text-gray-600">{form.city || "Ville"}</div>
+              <div className="mt-1">
+                <span className="font-semibold">{form.rent || 0} €</span>{" "}
+                <span className="text-gray-500">/ mois</span>
+                {form.charges && (
+                  <span className="text-gray-500"> • {form.charges} € charges</span>
+                )}
+              </div>
+              {form.surface && <div className="text-gray-600">{form.surface} m²</div>}
+            </div>
+          </div>
+        </section>
 
         {/* Actions */}
         <div className="pt-2 flex gap-3">
@@ -294,9 +316,6 @@ export default function NewListingPage() {
 
         {error && <p className="text-red-600">{error}</p>}
         {okMsg && <p className="text-green-600">{okMsg}</p>}
-        <p className="text-xs text-gray-500">
-          Astuce : si vous n’êtes pas connecté, la création renverra <em>401 Unauthorized</em>.
-        </p>
       </form>
     </main>
   );
