@@ -4,20 +4,21 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-/** Stub d'authentification → à remplacer par ton vrai système (NextAuth, Supabase Auth...) */
-async function getSessionUserId(): Promise<string | null> {
-  return null; // TODO: renvoyer l'id de l'utilisateur connecté
-}
-
-/** Récupère l'id dynamique directement depuis l'URL */
+/** Récupère l'id dynamique directement depuis l'URL (évite les types de context) */
 function getIdFromUrl(req: Request): string {
   const url = new URL(req.url);
   const parts = url.pathname.split("/").filter(Boolean);
+  // .../api/annonces/[id]
   const idx = parts.findIndex((p) => p === "annonces");
   return idx >= 0 && parts[idx + 1] ? parts[idx + 1] : "";
 }
 
-// ---------- GET ONE ----------
+/** TODO: remplace par ton auth réelle (NextAuth / Supabase Auth / etc.) */
+async function getSessionUserId(): Promise<string | null> {
+  return null; // ← mets ici l'id user connecté
+}
+
+// ---------- READ ONE ----------
 export async function GET(req: Request) {
   try {
     const id = getIdFromUrl(req);
@@ -30,8 +31,8 @@ export async function GET(req: Request) {
         owner: { select: { id: true, name: true, email: true } },
       },
     });
-
     if (!ad) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
     return NextResponse.json({ ok: true, listing: ad });
   } catch (e: any) {
     console.error("GET /api/annonces/[id] error:", e);
@@ -48,10 +49,7 @@ export async function PUT(req: Request) {
     const ownerId = await getSessionUserId();
     if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const existing = await prisma.listing.findUnique({
-      where: { id },
-      select: { ownerId: true },
-    });
+    const existing = await prisma.listing.findUnique({ where: { id }, select: { ownerId: true } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (existing.ownerId !== ownerId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -65,15 +63,17 @@ export async function PUT(req: Request) {
     if (body.rent != null) data.rent = Number(body.rent);
     if (body.charges != null) data.charges = Number(body.charges);
     if (body.bedrooms != null) data.bedrooms = Number(body.bedrooms);
-    if (body.surface != null) data.surface = Number(body.surface);
+    if (body.surface != null) data.surface = body.surface != null ? Number(body.surface) : null;
     if (body.furnished != null) data.furnished = Boolean(body.furnished);
-    if (body.lat != null) data.lat = Number(body.lat);
-    if (body.lng != null) data.lng = Number(body.lng);
-    if (body.availableAt != null) data.availableAt = body.availableAt ? new Date(body.availableAt) : null;
-    if (body.type != null) data.type = String(body.type).toUpperCase();
-    if (body.leaseType != null) data.leaseType = String(body.leaseType).toUpperCase();
-    if (body.status != null) data.status = String(body.status).toUpperCase();
+    if (body.lat != null) data.lat = body.lat != null ? Number(body.lat) : null;
+    if (body.lng != null) data.lng = body.lng != null ? Number(body.lng) : null;
+    if (body.availableAt != null)
+      data.availableAt = body.availableAt ? new Date(body.availableAt) : null;
+    if (body.type != null) data.type = String(body.type).toUpperCase();       // PropertyType
+    if (body.leaseType != null) data.leaseType = String(body.leaseType).toUpperCase(); // LeaseType
+    if (body.status != null) data.status = String(body.status).toUpperCase(); // ListingStatus
 
+    // Si body.images est fourni (array d'URLs), on remplace l’ordre simplement
     let result;
     if (Array.isArray(body.images)) {
       result = await prisma.$transaction(async (tx) => {
@@ -118,10 +118,7 @@ export async function DELETE(req: Request) {
     const ownerId = await getSessionUserId();
     if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const existing = await prisma.listing.findUnique({
-      where: { id },
-      select: { ownerId: true },
-    });
+    const existing = await prisma.listing.findUnique({ where: { id }, select: { ownerId: true } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (existing.ownerId !== ownerId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
