@@ -60,6 +60,7 @@ model Listing {
 
   images        ListingImage[]
   applications  Application[]
+  visitSlots    VisitSlot[]    // relation avec les créneaux de visite
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -76,16 +77,6 @@ model ListingImage {
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id])
   sort      Int     @default(0)
-}
-
-model Application {
-  id        String   @id @default(cuid())
-  listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id])
-  name      String
-  email     String
-  message   String?
-  createdAt DateTime @default(now())
 }
 
 enum ApplicationStatus {
@@ -120,21 +111,28 @@ enum DocumentType {
 }
 
 model Application {
-  id            String            @id @default(cuid())
-  listingId     String
-  listing       Listing           @relation(fields: [listingId], references: [id])
-  applicantId   String            // Supabase Auth user id
-  applicant     User              @relation(fields: [applicantId], references: [id])
-  status        ApplicationStatus @default(DRAFT)
-  score         Int               @default(0)
-  note          String?
-  visitSlotId   String?
-  visitSlot     VisitSlot?        @relation(fields: [visitSlotId], references: [id])
+  id          String            @id @default(cuid())
+  listingId   String
+  listing     Listing           @relation(fields: [listingId], references: [id])
 
-  documents     ApplicationDocument[]
+  // champs “simples” de contact (optionnels si tu veux garder rétro-compatibilité)
+  name        String?
+  email       String?
+  message     String?
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  // nouveaux champs pour le vrai dossier
+  applicantId String?           // Supabase Auth user id
+  applicant   User?             @relation(fields: [applicantId], references: [id])
+  status      ApplicationStatus @default(DRAFT)
+  score       Int               @default(0)
+  note        String?
+  visitSlotId String?
+  visitSlot   VisitSlot?        @relation(fields: [visitSlotId], references: [id])
+
+  documents   ApplicationDocument[]
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([listingId, applicantId])
 }
