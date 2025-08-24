@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/* ---------- Enums ---------- */
+// Enums
 
 enum PropertyType {
   APPARTEMENT
@@ -32,9 +32,9 @@ enum LeaseType {
 enum ApplicationStatus {
   DRAFT
   SUBMITTED
-  PREQUALIFIED   // scoring ok, peut réserver une visite
+  PREQUALIFIED
   REJECTED
-  APPROVED       // final accepté par le proprio
+  APPROVED
 }
 
 enum DocumentStatus {
@@ -60,20 +60,15 @@ enum DocumentType {
   AUTRE
 }
 
-/* ---------- Modèles ---------- */
+// Models
 
 model User {
   id        String    @id @default(cuid())
   email     String    @unique
   name      String?
-  role      String?   // "owner" | "tenant" | autre
-
-  // Propriétaire → ses annonces
+  role      String?
   listings  Listing[] @relation("OwnerListings")
-
-  // 👇 Inverse de Application.applicant (relation nommée)
   applicationsApplied Application[] @relation("ApplicantApplications")
-
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -88,10 +83,10 @@ model Listing {
   address       String?
   lat           Float?
   lng           Float?
-  rent          Int            // en euros
-  charges       Int            // en euros
+  rent          Int
+  charges       Int
   bedrooms      Int
-  surface       Int            // m2
+  surface       Int
   furnished     Boolean        @default(false)
   status        ListingStatus  @default(PUBLISHED)
   availableAt   DateTime?
@@ -100,8 +95,8 @@ model Listing {
   owner         User           @relation("OwnerListings", fields: [ownerId], references: [id])
 
   images        ListingImage[]
-  applications  Application[]      // dossiers rattachés à cette annonce
-  visitSlots    VisitSlot[]        // créneaux de visite
+  applications  Application[]
+  visitSlots    VisitSlot[]
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -125,25 +120,20 @@ model Application {
   listingId   String
   listing     Listing           @relation(fields: [listingId], references: [id])
 
-  // Champs “contact” historiques (laisse-les optionnels pour rétrocompat)
   name        String?
   email       String?
   message     String?
 
-  // Candidat (Supabase Auth user) — relation nommée avec inverse côté User
   applicantId String?
   applicant   User?             @relation("ApplicantApplications", fields: [applicantId], references: [id])
 
-  // Statut & scoring du dossier
   status      ApplicationStatus @default(DRAFT)
   score       Int               @default(0)
   note        String?
 
-  // Créneau de visite éventuellement réservé
   visitSlotId String?
   visitSlot   VisitSlot?        @relation(fields: [visitSlotId], references: [id])
 
-  // Pièces du dossier
   documents   ApplicationDocument[]
 
   createdAt   DateTime          @default(now())
@@ -160,7 +150,7 @@ model ApplicationDocument {
   type          DocumentType
   url           String
   status        DocumentStatus  @default(PENDING)
-  reason        String?         // si INVALID : pourquoi
+  reason        String?
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -176,7 +166,7 @@ model VisitSlot {
   capacity   Int       @default(1)
   booked     Int       @default(0)
 
-  applications Application[]     // applications ayant réservé ce créneau
+  applications Application[]
 
   createdAt  DateTime @default(now())
 
