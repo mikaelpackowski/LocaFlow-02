@@ -28,8 +28,12 @@ async function buildBaseUrl() {
   return `${proto}://${host}`;
 }
 
-export default async function AnnoncesPage(props: any) {
-  const sp = (props?.searchParams ?? {}) as SP;
+export default async function AnnoncesPage({
+  searchParams,
+}: {
+  searchParams?: SP;
+}) {
+  const sp = (searchParams ?? {}) as SP;
 
   const q = (sp.q || "").trim();
   const max = (sp.max || "").trim();
@@ -38,20 +42,43 @@ export default async function AnnoncesPage(props: any) {
   const page = Number(sp.page ?? 1);
   const limit = Number(sp.limit ?? 12);
 
-  const sortSafe: "" | "price_asc" | "price_desc" | undefined =
-    sort === "price_asc" || sort === "price_desc" ? sort : "";
+  const sortSafe: "" | "price_asc" | "price_desc" =
+    sort === "price_asc" || sort === "price_desc" ? (sort as any) : "";
 
-  // Query string pour l’API : on n’envoie que les champs renseignés
+  // ---- META : récupérer toutes les annonces (limitées) pour remplir villes/types
+  const base = await buildBaseUrl();
+
+  let cities: string[] = [];
+  let types: string[] = [];
+  try {
+    const metaRes = await fetch(`${base}/api/annonces?limit=500`, {
+      cache: "no-store",
+    });
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      const all = Array.isArray(meta.items) ? meta.items : [];
+      const citySet = new Set<string>();
+      const typeSet = new Set<string>();
+      for (const it of all) {
+        if (it?.city) citySet.add(it.city);
+        if (it?.type) typeSet.add(it.type);
+      }
+      cities = Array.from(citySet).sort((a, b) => a.localeCompare(b, "fr"));
+      types = Array.from(typeSet).sort((a, b) => a.localeCompare(b, "fr"));
+    }
+  } catch {
+    // silencieux : listes vides si échec
+  }
+
+  // ---- DATA : construire la query pour l’API filtrée
   const qs = new URLSearchParams();
   if (q) qs.set("q", q);
   if (max) qs.set("max", max);
   if (type && type !== "all") qs.set("type", type);
-  if (sort) qs.set("sort", sort);
+  if (sortSafe) qs.set("sort", sortSafe);
   qs.set("page", String(page));
   qs.set("limit", String(limit));
 
-  // ✅ FETCh ABSOLU (fiable en prod)
-  const base = await buildBaseUrl();
   const apiUrl = `${base}/api/annonces${qs.toString() ? `?${qs.toString()}` : ""}`;
 
   let data: any = { items: [], total: 0, page: 1, pages: 1, limit };
@@ -63,28 +90,32 @@ export default async function AnnoncesPage(props: any) {
     console.error("Erreur fetch /api/annonces:", e);
   }
 
- return (
-  <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
-    <header className="mx-auto max-w-3xl text-center">
-      <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-        Annonces{" "}
-        <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-          ForGesty
-        </span>
-      </h1>
-      <p className="mt-3 text-gray-600">
-        Explorez les biens disponibles et filtrez selon vos critères.
-      </p>
+  return (
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+      {/* -------- Header (comme Tarifs) ---------- */}
+      <header className="mx-auto max-w-3xl text-center">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+          Annonces{" "}
+          <span className="bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+            ForGesty
+          </span>
+        </h1>
+        <p className="mt-3 text-gray-600">
+          Explorez les biens disponibles et filtrez selon vos critères.
+        </p>
+      </header>
 
+      {/* -------- Barre de recherche -------- */}
       <SearchBar
         defaultQuery={q}
         defaultMax={max}
         defaultType={type || "all"}
         defaultSort={sortSafe}
-        cities={[]}
-        types={[]}
+        cities={cities}
+        types={types}
       />
 
+      {/* -------- Tri “Trier par…” -------- */}
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
           <input type="hidden" name="q" defaultValue={q} />
@@ -94,11 +125,20 @@ export default async function AnnoncesPage(props: any) {
         </form>
       </div>
 
-      {(!data?.items || data.items.length === 0) ? (
+      {/* -------- Liste -------- */}
+      {!data?.items || data.items.length === 0 ? (
         <div className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
           <div className="mt-3 text-xs">
-            (Debug&nbsp;: <a href={apiUrl} className="underline text-indigo-600" target="_blank">voir JSON API</a>)
+            (Debug :{" "}
+            <a
+              href={apiUrl}
+              className="underline text-indigo-600"
+              target="_blank"
+            >
+              voir JSON API
+            </a>
+            )
           </div>
         </div>
       ) : (
@@ -176,7 +216,9 @@ function Pagination({
         <a
           key={p}
           href={makeLink(p)}
-          className={`rounded-lg px-3 py-2 text-sm ${p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"}`}
+          className={`rounded-lg px-3 py-2 text-sm ${
+            p === page ? "bg-indigo-600 text-white" : "border hover:bg-gray-50"
+          }`}
         >
           {p}
         </a>
