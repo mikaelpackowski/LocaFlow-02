@@ -11,12 +11,10 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-// Normalise string | string[] | undefined -> string
 function toStr(v: string | string[] | undefined): string {
   return Array.isArray(v) ? (v[0] ?? "") : (v ?? "");
 }
 
-// Base URL fiable (Next 15: headers() est async)
 async function buildBaseUrl() {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -24,13 +22,8 @@ async function buildBaseUrl() {
   return `${proto}://${host}`;
 }
 
-// ✅ signature conforme à l’App Router
-export default async function AnnoncesPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
-  const sp = searchParams ?? {};
+export default async function AnnoncesPage({ searchParams }: any) {
+  const sp = (searchParams ?? {}) as Record<string, string | string[] | undefined>;
 
   const q = toStr(sp.q).trim();
   const max = toStr(sp.max).trim();
@@ -38,12 +31,12 @@ export default async function AnnoncesPage({
   const sort = toStr(sp.sort).trim();
   const page = Number(toStr(sp.page) || 1);
   const limit = Number(toStr(sp.limit) || 12);
-
   const sortSafe: "" | "price_asc" | "price_desc" =
     sort === "price_asc" || sort === "price_desc" ? (sort as any) : "";
 
-  // ---- META : remplir villes/types
   const base = await buildBaseUrl();
+
+  // --- META (villes/types)
   let cities: string[] = [];
   let types: string[] = [];
   try {
@@ -60,11 +53,9 @@ export default async function AnnoncesPage({
       cities = Array.from(citySet).sort((a, b) => a.localeCompare(b, "fr"));
       types = Array.from(typeSet).sort((a, b) => a.localeCompare(b, "fr"));
     }
-  } catch {
-    // silencieux
-  }
+  } catch {}
 
-  // ---- DATA : annonces filtrées
+  // --- DATA
   const qs = new URLSearchParams();
   if (q) qs.set("q", q);
   if (max) qs.set("max", max);
@@ -72,7 +63,6 @@ export default async function AnnoncesPage({
   if (sortSafe) qs.set("sort", sortSafe);
   qs.set("page", String(page));
   qs.set("limit", String(limit));
-
   const apiUrl = `${base}/api/annonces${qs.toString() ? `?${qs.toString()}` : ""}`;
 
   let data: any = { items: [], total: 0, page: 1, pages: 1, limit };
@@ -86,7 +76,6 @@ export default async function AnnoncesPage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
-      {/* Header aligné sur Tarifs */}
       <header className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
           Annonces{" "}
@@ -99,7 +88,6 @@ export default async function AnnoncesPage({
         </p>
       </header>
 
-      {/* Barre de recherche alimentée */}
       <SearchBar
         defaultQuery={q}
         defaultMax={max}
@@ -109,7 +97,6 @@ export default async function AnnoncesPage({
         types={types}
       />
 
-      {/* Tri */}
       <div className="mt-4 flex justify-end">
         <form method="get" className="flex items-center gap-2">
           <input type="hidden" name="q" defaultValue={q} />
@@ -119,7 +106,6 @@ export default async function AnnoncesPage({
         </form>
       </div>
 
-      {/* Liste / Pagination */}
       {!data?.items || data.items.length === 0 ? (
         <div className="mt-10 text-center text-gray-500">
           Aucune annonce ne correspond à vos critères.
