@@ -1,19 +1,41 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
 
 // GET /api/annonces/meta -> { cities: string[], types: string[] }
 export async function GET() {
-  const { data, error } = await supabaseServer
-    .from("annonces")
-    .select("city,type");
+  try {
+    // Deux requêtes distinctes pour obtenir des valeurs uniques
+    const [cityRows, typeRows] = await Promise.all([
+      prisma.listing.findMany({
+        select: { city: true },
+        where: { city: { not: null } },
+        distinct: ["city"],
+      }),
+      prisma.listing.findMany({
+        select: { type: true },
+        where: { type: { not: null } },
+        distinct: ["type"],
+      }),
+    ]);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const cities = cityRows
+      .map((r) => r.city!)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "fr"));
 
-  const rows = data ?? [];
-  const cities = Array.from(new Set(rows.map(r => r.city).filter(Boolean as any)))
-    .sort((a, b) => a.localeCompare(b, "fr"));
-  const types = Array.from(new Set(rows.map(r => r.type).filter(Boolean as any)))
-    .sort((a, b) => a.localeCompare(b, "fr"));
+    const types = typeRows
+      .map((r) => r.type!)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "fr"));
 
-  return NextResponse.json({ cities, types });
+    return NextResponse.json({ cities, types });
+  } catch (e: any) {
+    console.error("GET /api/annonces/meta error:", e);
+    return NextResponse.json(
+      { error: e?.message ?? "Erreur serveur" },
+      { status: 500 }
+    );
+  }
 }
