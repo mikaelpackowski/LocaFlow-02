@@ -1,24 +1,19 @@
 // app/api/annonces/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/** Récupère l'id dynamique directement depuis l'URL (évite les types de context) */
+/** Récupération de l'id via l'URL */
 function getIdFromUrl(req: Request): string {
   const url = new URL(req.url);
   const parts = url.pathname.split("/").filter(Boolean);
-  // .../api/annonces/[id]
   const idx = parts.findIndex((p) => p === "annonces");
   return idx >= 0 && parts[idx + 1] ? parts[idx + 1] : "";
 }
 
-/** TODO: remplace par ton auth réelle (NextAuth / Supabase Auth / etc.) */
-async function getSessionUserId(): Promise<string | null> {
-  return null; // ← mets ici l'id user connecté
-}
-
-// ---------- READ ONE ----------
+// ---------- GET ONE ----------
 export async function GET(req: Request) {
   try {
     const id = getIdFromUrl(req);
@@ -63,17 +58,15 @@ export async function PUT(req: Request) {
     if (body.rent != null) data.rent = Number(body.rent);
     if (body.charges != null) data.charges = Number(body.charges);
     if (body.bedrooms != null) data.bedrooms = Number(body.bedrooms);
-    if (body.surface != null) data.surface = body.surface != null ? Number(body.surface) : null;
+    if (body.surface != null) data.surface = Number(body.surface);
     if (body.furnished != null) data.furnished = Boolean(body.furnished);
-    if (body.lat != null) data.lat = body.lat != null ? Number(body.lat) : null;
-    if (body.lng != null) data.lng = body.lng != null ? Number(body.lng) : null;
-    if (body.availableAt != null)
-      data.availableAt = body.availableAt ? new Date(body.availableAt) : null;
-    if (body.type != null) data.type = String(body.type).toUpperCase();       // PropertyType
-    if (body.leaseType != null) data.leaseType = String(body.leaseType).toUpperCase(); // LeaseType
-    if (body.status != null) data.status = String(body.status).toUpperCase(); // ListingStatus
+    if (body.lat != null) data.lat = Number(body.lat);
+    if (body.lng != null) data.lng = Number(body.lng);
+    if (body.availableAt != null) data.availableAt = body.availableAt ? new Date(body.availableAt) : null;
+    if (body.type != null) data.type = String(body.type).toUpperCase();
+    if (body.leaseType != null) data.leaseType = String(body.leaseType).toUpperCase();
+    if (body.status != null) data.status = String(body.status).toUpperCase();
 
-    // Si body.images est fourni (array d'URLs), on remplace l’ordre simplement
     let result;
     if (Array.isArray(body.images)) {
       result = await prisma.$transaction(async (tx) => {
