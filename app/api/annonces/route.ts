@@ -2,10 +2,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { PropertyType, LeaseType, ListingStatus } from "@prisma/client";
+import { getSessionUserId, ensureAppUserFromSupabase } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-/* ---------------- Helpers enums ---------------- */
+/* Helpers enums (identiques à ta version) */
 function parsePropertyType(v: string): PropertyType {
   const up = (v || "").toUpperCase();
   const ok = ["APPARTEMENT", "MAISON", "STUDIO", "LOFT", "LOCAL"] as const;
@@ -24,26 +25,16 @@ function parseStatus(v?: string | null): ListingStatus {
   return (ok as readonly string[]).includes(up) ? (up as ListingStatus) : "PUBLISHED";
 }
 
-/* ---------------- Auth stub (à remplacer par ton auth réelle) ---------------- */
-async function getSessionUserId(): Promise<string | null> {
-  // TODO: branche ici NextAuth ou Supabase Auth et renvoie l'id user
-  return null;
-}
-
 /* ---------------- POST: créer une annonce ---------------- */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const ownerId = await getSessionUserId();
+    if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Auth réelle (stub) OU mode test: ownerId fourni dans le body si ALLOW_UNAUTH_POST=1
-    let ownerId = await getSessionUserId();
-    if (!ownerId && process.env.ALLOW_UNAUTH_POST === "1") {
-      const raw = String(body.ownerId ?? "").trim();
-      ownerId = raw || null;
-    }
-    if (!ownerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // (optionnel) s'assurer que la ligne User existe côté Prisma
+    await ensureAppUserFromSupabase();
+
+    const body = await req.json();
 
     // Requis
     const title = String(body.title ?? "").trim();
@@ -55,13 +46,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
     }
 
-    // Numériques non-nullables (d’après ton schema)
+    // Numériques non-nullables
     const rent = Number(body.rent ?? 0);
     const charges = Number(body.charges ?? 0);
     const bedrooms = Number(body.bedrooms ?? 0);
     const surface = body.surface === null || body.surface === undefined ? 0 : Number(body.surface);
 
-    // Autres champs
+    // Autres
     const furnished = Boolean(body.furnished ?? false);
     const status = parseStatus(body.status);
     const address = body.address ? String(body.address) : null;
@@ -69,31 +60,28 @@ export async function POST(req: Request) {
     const lng = body.lng === null || body.lng === undefined ? null : Number(body.lng);
     const availableAt = body.availableAt ? new Date(body.availableAt) : null;
 
-    // Images: tableau d’URLs optionnel
     const images: string[] = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
 
     const created = await prisma.listing.create({
       data: {
-        ownerId,
+        ownerId, // ← auth réelle
         title,
         description,
-        type,        // enum PropertyType
-        leaseType,   // enum LeaseType
+        type,
+        leaseType,
         city,
-        address,     // String | null
-        lat,         // Float? -> null OK
-        lng,         // Float? -> null OK
-        rent,        // Int
-        charges,     // Int
-        bedrooms,    // Int
-        surface,     // Int (non-null)
-        furnished,   // Boolean
-        status,      // enum ListingStatus
-        availableAt, // DateTime? -> null OK
+        address,
+        lat,
+        lng,
+        rent,
+        charges,
+        bedrooms,
+        surface,
+        furnished,
+        status,
+        availableAt,
         images: images.length
-          ? {
-              create: images.map((url, idx) => ({ url, alt: null, sort: idx })),
-            }
+          ? { create: images.map((url, idx) => ({ url, alt: null, sort: idx })) }
           : undefined,
       },
       include: { images: true, owner: { select: { id: true, email: true, name: true } } },
@@ -106,15 +94,15 @@ export async function POST(req: Request) {
   }
 }
 
-/* ---------------- GET: lister les annonces (filtrées) ---------------- */
+/* ---------------- GET: liste des annonces ---------------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
     const q = (searchParams.get("q") ?? "").trim();
     const city = (searchParams.get("city") ?? "").trim();
-    const typeStr = (searchParams.get("type") ?? "").trim();       // APPARTEMENT|MAISON|...
-    const leaseStr = (searchParams.get("leaseType") ?? "").trim(); // VIDE|MEUBLE
+    const typeStr = (searchParams.get("type") ?? "").trim();
+    const leaseStr = (searchParams.get("leaseType") ?? "").trim();
     const max = Number(searchParams.get("max") ?? "");
     const sort = (searchParams.get("sort") ?? "") as "" | "price_asc" | "price_desc";
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
@@ -133,31 +121,19 @@ export async function GET(req: Request) {
     if (city) where.city = city;
 
     if (typeStr && typeStr !== "all") {
-      try {
-        where.type = parsePropertyType(typeStr);
-      } catch {
-        where.type = "__NO_MATCH__"; // force 0 résultat si invalide
-      }
+      try { where.type = parsePropertyType(typeStr); } catch { where.type = "__NO_MATCH__"; }
     }
-
     if (leaseStr && leaseStr !== "all") {
-      try {
-        where.leaseType = parseLeaseType(leaseStr);
-      } catch {
-        where.leaseType = "__NO_MATCH__";
-      }
+      try { where.leaseType = parseLeaseType(leaseStr); } catch { where.leaseType = "__NO_MATCH__"; }
     }
-
     if (!Number.isNaN(max) && max > 0) {
       where.rent = { lte: max };
     }
 
     const orderBy =
-      sort === "price_asc"
-        ? [{ rent: "asc" as const }]
-        : sort === "price_desc"
-        ? [{ rent: "desc" as const }]
-        : [{ createdAt: "desc" as const }];
+      sort === "price_asc" ? [{ rent: "asc" as const }] :
+      sort === "price_desc" ? [{ rent: "desc" as const }] :
+      [{ createdAt: "desc" as const }];
 
     const [total, items] = await Promise.all([
       prisma.listing.count({ where }),
