@@ -1,7 +1,9 @@
+// app/api/applications/[id]/submit/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth";
 import { buildChecklist, scoreApplication, SCORE_THRESHOLD } from "@/lib/application-assistant";
+import { DocumentType } from "@prisma/client"; // ✅ importe l'enum
 
 export const runtime = "nodejs";
 
@@ -10,6 +12,13 @@ function getIdFromUrl(req: Request) {
   const parts = u.pathname.split("/").filter(Boolean);
   const idx = parts.findIndex((p) => p === "applications");
   return idx >= 0 ? parts[idx + 1] : "";
+}
+
+function toDocumentType(t: string): DocumentType | null {
+  // ✅ garde seulement les valeurs reconnues par l'enum Prisma
+  return (Object.values(DocumentType) as string[]).includes(t)
+    ? (t as DocumentType)
+    : null;
 }
 
 export async function POST(req: Request) {
@@ -26,19 +35,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Vérifie complétude minimale
-    const profile = {}; // tu peux récupérer les infos candidat si tu les stockes
+    // Tu peux alimenter un vrai profil si tu le stockes ailleurs
+    const profile = {};
     const checklist = buildChecklist(app.listing, profile);
-    const required = checklist.filter((c) => c.required).map((c) => c.type);
-    const present = new Set(app.documents.map((d) => d.type));
-    const missing = required.filter((t) => !present.has(t));
+
+    // ✅ convertit les types requis (string) en enum DocumentType
+    const requiredEnum = checklist
+      .filter((c) => c.required)
+      .map((c) => toDocumentType(c.type))
+      .filter((v): v is DocumentType => v !== null);
+
+    const present = new Set<DocumentType>(app.documents.map((d) => d.type));
+
+    // ✅ compare enum vs enum (plus de mismatch)
+    const missing = requiredEnum.filter((t) => !present.has(t));
 
     if (missing.length > 0) {
-      return NextResponse.json({ error: "Documents manquants", missing }, { status: 400 });
+      // on renvoie des strings “propres” pour l’API
+      return NextResponse.json(
+        { error: "Documents manquants", missing: missing.map((m) => m.toString()) },
+        { status: 400 }
+      );
     }
 
     const docsOk = app.documents.filter((d) => d.status === "VALID").length;
-    const score = scoreApplication(app.listing, {}, docsOk, required.length);
+    const score = scoreApplication(app.listing, {}, docsOk, requiredEnum.length);
     const status = score >= SCORE_THRESHOLD ? "PREQUALIFIED" : "SUBMITTED";
 
     await prisma.application.update({ where: { id: app.id }, data: { status, score } });
