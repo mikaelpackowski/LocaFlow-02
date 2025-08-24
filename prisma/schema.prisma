@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/* ---------- Enums ---------- */
+
 enum PropertyType {
   APPARTEMENT
   MAISON
@@ -25,58 +27,6 @@ enum ListingStatus {
 enum LeaseType {
   VIDE
   MEUBLE
-}
-
-model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  role      String?   // "owner" | "tenant" | autre
-  listings  Listing[] @relation("OwnerListings")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Listing {
-  id            String        @id @default(cuid())
-  title         String
-  description   String
-  type          PropertyType
-  leaseType     LeaseType
-  city          String
-  address       String?
-  lat           Float?
-  lng           Float?
-  rent          Int            // en euros
-  charges       Int            // en euros
-  bedrooms      Int
-  surface       Int            // m2
-  furnished     Boolean        @default(false)
-  status        ListingStatus  @default(PUBLISHED)
-  availableAt   DateTime?
-
-  ownerId       String
-  owner         User           @relation("OwnerListings", fields: [ownerId], references: [id])
-
-  images        ListingImage[]
-  applications  Application[]
-  visitSlots    VisitSlot[]    // relation avec les créneaux de visite
-
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  @@index([status, city, type])
-  @@index([rent])
-  @@index([availableAt])
-}
-
-model ListingImage {
-  id        String  @id @default(cuid())
-  url       String
-  alt       String?
-  listingId String
-  listing   Listing @relation(fields: [listingId], references: [id])
-  sort      Int     @default(0)
 }
 
 enum ApplicationStatus {
@@ -110,25 +60,90 @@ enum DocumentType {
   AUTRE
 }
 
+/* ---------- Modèles ---------- */
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  role      String?   // "owner" | "tenant" | autre
+
+  // Propriétaire → ses annonces
+  listings  Listing[] @relation("OwnerListings")
+
+  // 👇 Inverse de Application.applicant (relation nommée)
+  applicationsApplied Application[] @relation("ApplicantApplications")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Listing {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  type          PropertyType
+  leaseType     LeaseType
+  city          String
+  address       String?
+  lat           Float?
+  lng           Float?
+  rent          Int            // en euros
+  charges       Int            // en euros
+  bedrooms      Int
+  surface       Int            // m2
+  furnished     Boolean        @default(false)
+  status        ListingStatus  @default(PUBLISHED)
+  availableAt   DateTime?
+
+  ownerId       String
+  owner         User           @relation("OwnerListings", fields: [ownerId], references: [id])
+
+  images        ListingImage[]
+  applications  Application[]      // dossiers rattachés à cette annonce
+  visitSlots    VisitSlot[]        // créneaux de visite
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, city, type])
+  @@index([rent])
+  @@index([availableAt])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  url       String
+  alt       String?
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+  sort      Int     @default(0)
+}
+
 model Application {
   id          String            @id @default(cuid())
   listingId   String
   listing     Listing           @relation(fields: [listingId], references: [id])
 
-  // champs “simples” de contact (optionnels si tu veux garder rétro-compatibilité)
+  // Champs “contact” historiques (laisse-les optionnels pour rétrocompat)
   name        String?
   email       String?
   message     String?
 
-  // nouveaux champs pour le vrai dossier
-  applicantId String?           // Supabase Auth user id
-  applicant   User?             @relation(fields: [applicantId], references: [id])
+  // Candidat (Supabase Auth user) — relation nommée avec inverse côté User
+  applicantId String?
+  applicant   User?             @relation("ApplicantApplications", fields: [applicantId], references: [id])
+
+  // Statut & scoring du dossier
   status      ApplicationStatus @default(DRAFT)
   score       Int               @default(0)
   note        String?
+
+  // Créneau de visite éventuellement réservé
   visitSlotId String?
   visitSlot   VisitSlot?        @relation(fields: [visitSlotId], references: [id])
 
+  // Pièces du dossier
   documents   ApplicationDocument[]
 
   createdAt   DateTime          @default(now())
@@ -161,7 +176,7 @@ model VisitSlot {
   capacity   Int       @default(1)
   booked     Int       @default(0)
 
-  applications Application[]
+  applications Application[]     // applications ayant réservé ce créneau
 
   createdAt  DateTime @default(now())
 
