@@ -1,9 +1,6 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
-import PricingCard from "@/components/PricingCard";
-import { registerLink } from "@/lib/register-link";
-import { PRICE } from "@/lib/prices";
 import Link from "next/link";
+import PricingCard from "@/components/PricingCard";
+// Si tu n’utilises plus NextAuth ici, on peut retirer getServerSession/authOptions
 
 export const metadata = {
   title: "Tarifs – ForGesty",
@@ -11,10 +8,10 @@ export const metadata = {
     "Des plans clairs pour propriétaires et agences. Commencez gratuitement, évoluez quand vous le souhaitez.",
 };
 
-export default async function TarifsPage() {
-  // on ne s’en sert plus pour le routing, mais on garde si besoin plus tard
-  await getServerSession(authOptions);
+const ownerSignupLink = (plan: "STARTER" | "PRO" | "PREMIUM" | "BUSINESS") =>
+  `/inscription?role=owner&plan=${plan}&trial=1m&returnTo=/dashboard/proprietaire`;
 
+export default async function TarifsPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 pt-32 md:pt-36 pb-16">
       <header className="mx-auto max-w-3xl text-center">
@@ -48,14 +45,22 @@ export default async function TarifsPage() {
               "Documents de base",
               "Découverte de la plateforme",
             ]}
-            cta={registerLink(PRICE.free, "Choisir")}
+            // Pas d’essai pour le gratuit
+            cta={
+              <Link
+                href="/inscription?role=owner&plan=STARTER&returnTo=/dashboard/proprietaire"
+                className="w-full rounded-full bg-indigo-600 px-5 py-2 text-white text-center block hover:bg-indigo-700"
+              >
+                Choisir
+              </Link>
+            }
           />
 
-          {/* Propriétaire 14 € */}
+          {/* Propriétaire 14 € — essai 1 mois */}
           <PricingCard
             title="Propriétaire"
             price="14 € / mois"
-            badge="Populaire"
+            badge="Essai 1 mois"
             features={[
               "Jusqu'à 5 biens",
               "Quittances automatiques",
@@ -63,13 +68,22 @@ export default async function TarifsPage() {
               "Aide IA intégrée",
               "Support standard",
             ]}
-            cta={registerLink(PRICE.owner, "Choisir")}
+            footnote="Essai gratuit 1 mois, sans engagement."
+            cta={
+              <Link
+                href={ownerSignupLink("PRO")}
+                className="w-full rounded-full bg-indigo-600 px-5 py-2 text-white text-center block hover:bg-indigo-700"
+              >
+                Commencer l’essai
+              </Link>
+            }
           />
 
-          {/* Premium 29 € */}
+          {/* Premium 29 € — essai 1 mois */}
           <PricingCard
             title="Premium"
             price="29 € / mois"
+            badge="Essai 1 mois"
             features={[
               "Jusqu'à 15 biens",
               "Relances & rappels automatiques",
@@ -77,7 +91,15 @@ export default async function TarifsPage() {
               "Documents illimités",
               "Support prioritaire",
             ]}
-            cta={registerLink(PRICE.premium, "Choisir")}
+            footnote="Essai gratuit 1 mois, sans engagement."
+            cta={
+              <Link
+                href={ownerSignupLink("PREMIUM")}
+                className="w-full rounded-full bg-indigo-600 px-5 py-2 text-white text-center block hover:bg-indigo-700"
+              >
+                Commencer l’essai
+              </Link>
+            }
           />
         </div>
       </section>
@@ -90,10 +112,11 @@ export default async function TarifsPage() {
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Business 79 € */}
+          {/* Business 79 € — essai 1 mois */}
           <PricingCard
             title="Business"
             price="79 € / mois"
+            badge="Essai 1 mois"
             features={[
               "Biens illimités",
               "Multi-collaborateurs",
@@ -101,7 +124,15 @@ export default async function TarifsPage() {
               "Flux annonces (coming soon)",
               "Support dédié",
             ]}
-            cta={registerLink(PRICE.business, "Choisir")}
+            footnote="Essai gratuit 1 mois, sans engagement."
+            cta={
+              <Link
+                href={ownerSignupLink("BUSINESS")}
+                className="w-full rounded-full bg-indigo-600 px-5 py-2 text-white text-center block hover:bg-indigo-700"
+              >
+                Commencer l’essai
+              </Link>
+            }
           />
 
           {/* Enterprise – Sur devis */}
@@ -119,7 +150,7 @@ export default async function TarifsPage() {
                 href="/contact"
                 className="w-full rounded-full border px-5 py-2 font-medium hover:bg-gray-50 text-center block"
               >
-                Choisir
+                Nous contacter
               </Link>
             }
           />
