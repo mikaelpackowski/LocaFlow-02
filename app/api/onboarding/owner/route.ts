@@ -1,84 +1,43 @@
 // app/api/onboarding/owner/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUserId } from "@/lib/auth"; // ta fonction existante qui lit la session Supabase/NextAuth
+import { getSessionUserId } from "@/lib/auth";
 import { Plan, SubscriptionStatus } from "@prisma/client";
 
-type TrialParam = "1m" | "" | null | undefined;
-
-function addMonths(date: Date, months: number) {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
-}
+function addMonths(d: Date, m: number) { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; }
 
 export async function POST(req: Request) {
   try {
     const userId = await getSessionUserId();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Lis body JSON éventuellement
-    const body = await req.json().catch(() => ({} as any));
-    const planRaw: string | undefined = body.plan ?? undefined;
-    const trialRaw: TrialParam =
-      body.trial ??
-      ((): TrialParam => {
-        // fallback: autorise trial=... en query string aussi
-        const url = new URL(req.url);
-        return (url.searchParams.get("trial") as TrialParam) ?? undefined;
-      })();
+    const body = await req.json().catch(() => ({}));
+    const plan = body.plan as Plan | undefined;
+    const trial = body.trial as string | undefined; // "1m" possible
 
-    if (!planRaw) {
-      return NextResponse.json({ error: "plan requis" }, { status: 400 });
-    }
-    if (!Object.values(Plan).includes(planRaw as Plan)) {
+    if (!plan || !Object.values(Plan).includes(plan)) {
       return NextResponse.json({ error: "plan invalide" }, { status: 400 });
     }
-    const plan = planRaw as Plan;
 
-    // 1) Marque l'utilisateur comme owner si ce n'est pas déjà le cas
-    await prisma.user.update({
-      where: { id: userId },
-      data: { role: "owner" },
-    });
+    await prisma.user.update({ where: { id: userId }, data: { role: "owner" } });
 
-    // 2) Détermine statut + fin de période
     let status: SubscriptionStatus = "PENDING_PAYMENT";
     let currentPeriodEnd: Date | null = null;
+    if (trial === "1m") { status = "TRIALING"; currentPeriodEnd = addMonths(new Date(), 1); }
 
-    if (trialRaw === "1m") {
-      status = "TRIALING";
-      currentPeriodEnd = addMonths(new Date(), 1); // +1 mois à partir d'aujourd'hui
-    }
-
-    // 3) Si une sub active/trial/pending existe déjà, on évite les doublons
     const existing = await prisma.subscription.findFirst({
       where: { userId, status: { in: ["TRIALING", "ACTIVE", "PENDING_PAYMENT"] } },
       orderBy: { createdAt: "desc" },
     });
 
-    let subscription;
-    if (existing) {
-      // On met à jour le plan & la date de fin si trial est demandé
-      subscription = await prisma.subscription.update({
-        where: { id: existing.id },
-        data: {
-          plan,
-          status,
-          currentPeriodEnd: currentPeriodEnd ?? existing.currentPeriodEnd,
-        },
-      });
-    } else {
-      // Sinon, on crée
-      subscription = await prisma.subscription.create({
-        data: {
-          userId,
-          plan,
-          status,
-          currentPeriodEnd: currentPeriodEnd ?? undefined,
-        },
-      });
-    }
+    const subscription = existing
+      ? await prisma.subscription.update({
+          where: { id: existing.id },
+          data: { plan, status, currentPeriodEnd: currentPeriodEnd ?? existing.currentPeriodEnd },
+        })
+      : await prisma.subscription.create({
+          data: { userId, plan, status, currentPeriodEnd: currentPeriodEnd ?? undefined },
+        });
 
     return NextResponse.json({
       ok: true,
@@ -90,7 +49,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (e: any) {
-    console.error("POST /api/onboarding/owner error:", e);
+    console.error("onboarding/owner", e);
     return NextResponse.json({ error: e?.message ?? "Erreur serveur" }, { status: 500 });
   }
 }
