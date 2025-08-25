@@ -9,7 +9,7 @@ import { Plan, SubscriptionStatus } from "@prisma/client";
 function addMonths(d: Date, m: number) { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; }
 
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
-  // 1) Prefer Bearer token
+  // 1) Bearer
   const auth = req.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
   if (token) {
@@ -17,10 +17,16 @@ async function getUserIdFromRequest(req: Request): Promise<string | null> {
     if (!error && data?.user?.id) return data.user.id;
   }
 
-  // 2) Fallback: cookies-based session (no await here in Next 15)
-  const supaFromCookies = createRouteHandlerClient({ cookies }); // ✅ pass the function
+  // 2) Cookies (session existante)
+  const supaFromCookies = createRouteHandlerClient({ cookies });
   const { data } = await supaFromCookies.auth.getUser();
   if (data?.user?.id) return data.user.id;
+
+  // 3) Fallback TEMP : userId passé dans le body (signUp renvoie toujours user.id)
+  try {
+    const body = await req.clone().json(); // clone car le body sera re-lu plus bas
+    if (body?.userId && typeof body.userId === "string") return body.userId;
+  } catch {}
 
   return null;
 }
