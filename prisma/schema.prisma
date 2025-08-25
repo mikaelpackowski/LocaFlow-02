@@ -60,6 +60,23 @@ enum DocumentType {
   AUTRE
 }
 
+/* --- Nouveaux enums Abonnement --- */
+enum Plan {
+  STARTER      // gratuit (ton “Gratuit”)
+  PRO          // “Propriétaire”
+  PREMIUM
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
 // Models
 
 model User {
@@ -69,6 +86,10 @@ model User {
   role      String?
   listings  Listing[] @relation("OwnerListings")
   applicationsApplied Application[] @relation("ApplicantApplications")
+
+  // 👇 relation abonnement
+  subscriptions Subscription[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -171,4 +192,18 @@ model VisitSlot {
   createdAt  DateTime @default(now())
 
   @@index([listingId, start])
+}
+
+/* --- Nouveau modèle Abonnement --- */
+model Subscription {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id])
+  plan             Plan
+  status           SubscriptionStatus  @default(PENDING_PAYMENT)
+  currentPeriodEnd DateTime?           // pour ACTIVE/TRIALING
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([userId, status])
 }
