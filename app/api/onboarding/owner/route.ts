@@ -1,20 +1,28 @@
-// app/api/onboarding/owner/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { Plan, SubscriptionStatus } from "@prisma/client";
 
 function addMonths(d: Date, m: number) { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; }
 
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
-  const supabase = createSupabaseServerClient();
+  // 1) Bearer token (préféré)
   const auth = req.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-  if (!token) return null;
+  if (token) {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (!error && data?.user?.id) return data.user.id;
+  }
 
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return null;
-  return data.user.id;
+  // 2) Fallback cookies (si l’utilisateur a déjà une session valide)
+  const c = await cookies();
+  const supaFromCookies = createRouteHandlerClient({ cookies: () => c });
+  const { data } = await supaFromCookies.auth.getUser();
+  if (data?.user?.id) return data.user.id;
+
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -30,14 +38,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "plan invalide" }, { status: 400 });
     }
 
-    // Marque owner
+    // Marquer owner
     await prisma.user.update({ where: { id: userId }, data: { role: "owner" } });
 
+    // Créer/mettre à jour l’abonnement d’essai
     let status: SubscriptionStatus = "PENDING_PAYMENT";
     let currentPeriodEnd: Date | null = null;
     if (trial === "1m") { status = "TRIALING"; currentPeriodEnd = addMonths(new Date(), 1); }
 
-    // Upsert sub
     const existing = await prisma.subscription.findFirst({
       where: { userId, status: { in: ["TRIALING", "ACTIVE", "PENDING_PAYMENT"] } },
       orderBy: { createdAt: "desc" },
