@@ -8,12 +8,14 @@ export default function PricingCard({
   badge,
   features,
   cta,
+  footnote, // ✅ nouveau, optionnel
 }: {
   title: string;
   price: string;
   badge?: string;
   features: string[];
   cta: React.ReactNode;
+  footnote?: string; // ✅ nouveau, optionnel
 }) {
   return (
     <div className="flex flex-col justify-between rounded-2xl border bg-white p-6 shadow-sm">
@@ -38,6 +40,7 @@ export default function PricingCard({
                 className="mt-0.5 h-4 w-4 text-green-600"
                 viewBox="0 0 20 20"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path
                   fillRule="evenodd"
@@ -49,6 +52,11 @@ export default function PricingCard({
             </li>
           ))}
         </ul>
+
+        {/* ✅ Petit texte d’info sous la liste si fourni */}
+        {footnote && (
+          <p className="mt-3 text-xs text-gray-500">{footnote}</p>
+        )}
       </div>
 
       <div className="mt-6">{cta}</div>
