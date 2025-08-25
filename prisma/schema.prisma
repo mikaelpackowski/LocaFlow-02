@@ -60,7 +60,7 @@ enum DocumentType {
   AUTRE
 }
 
-/* --- Nouveaux enums Abonnement --- */
+// --- Nouveaux enums Abonnement ---
 enum Plan {
   STARTER      // gratuit (ton “Gratuit”)
   PRO          // “Propriétaire”
@@ -194,7 +194,7 @@ model VisitSlot {
   @@index([listingId, start])
 }
 
-/* --- Nouveau modèle Abonnement --- */
+// --- Nouveau modèle Abonnement ---
 model Subscription {
   id               String              @id @default(cuid())
   userId           String
