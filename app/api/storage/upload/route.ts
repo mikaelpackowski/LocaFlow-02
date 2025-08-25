@@ -1,72 +1,56 @@
 // app/api/storage/upload/route.ts
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/supabaseAdmin"; // ✅ corrige l'import
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function sanitizeFilename(name: string) {
-  // sépare extension
-  const dot = name.lastIndexOf(".");
-  const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
-  const base = dot >= 0 ? name.slice(0, dot) : name;
-
-  // remplace tout ce qui n'est pas [a-z0-9._-] par "-"
-  const safeBase = base
-    .normalize("NFKD")              // enlève accents
-    .replace(/[\u0300-\u036f]/g, "") // diacritiques
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase() || "file";
-
-  return ext ? `${safeBase}.${ext}` : safeBase;
-}
-
+/**
+ * Expects a multipart/form-data with:
+ *  - file: Blob/File
+ *  - bucket (optional, default "public")
+ *  - path (optional, default generated)
+ *
+ * Returns: { url }
+ */
 export async function POST(req: Request) {
   try {
+    // Lire le form-data
     const form = await req.formData();
     const file = form.get("file") as File | null;
-    if (!file) return NextResponse.json({ error: "Missing file" }, { status: 400 });
+    const bucket = (form.get("bucket") as string) || "public";
+    const customPath = (form.get("path") as string) || "";
 
-    // borne de sécurité (ex: 10 Mo)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "Fichier trop volumineux (max 10 Mo)" }, { status: 413 });
+    if (!file) {
+      return NextResponse.json({ error: "file requis" }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
+    // Construire un chemin si non fourni
+    const ext = file.name?.split(".").pop() || "bin";
+    const name = crypto.randomUUID();
+    const path = customPath || `${name}.${ext}`;
 
-    // nom sûr
-    const safeName = sanitizeFilename(file.name);
-    const key = `uploads/${Date.now()}-${safeName}`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const { data, error } = await supabase.storage
-      .from("annonces") // ⚠️ bucket doit exister et être public
-      .upload(key, Buffer.from(arrayBuffer), {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
+    // Upload via service role (admin)
+    const { data, error } = await supabaseAdmin.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+    });
 
     if (error) {
-      // messages plus explicites
-      const msg = /Invalid key/i.test(error.message)
-        ? `Nom de fichier invalide après nettoyage: ${key}`
-        : /Bucket not found/i.test(error.message)
-        ? `Bucket "annonces" introuvable (crée-le et rends-le public).`
-        : error.message;
-      return NextResponse.json({ error: msg }, { status: 500 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: pub } = supabase.storage.from("annonces").getPublicUrl(key);
+    // Construire l’URL publique (si le bucket est public)
+    const { data: pub } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
 
     return NextResponse.json({
       ok: true,
       path: data?.path,
-      publicUrl: pub.publicUrl,
-      filename: safeName,
+      url: pub.publicUrl, // utilisable directement si bucket public
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Erreur upload" }, { status: 500 });
+    console.error("POST /api/storage/upload error:", e);
+    return NextResponse.json({ error: e?.message ?? "Erreur serveur" }, { status: 500 });
   }
 }
