@@ -38,34 +38,36 @@ function SignupForm() {
     e.preventDefault();
     setMsg("");
 
-    // 1) Création du compte Supabase Auth
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      setMsg(error.message);
-      return;
-    }
+   // 1) Création du compte
+const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
+if (error) { setMsg(error.message); return; }
 
-    // 2) Récupérer le token de session côté client
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token ?? null;
+// 2) Session (peut être absente si confirm e-mail ON)
+const { data: sessionData } = await supabase.auth.getSession();
+const token = sessionData.session?.access_token ?? null;
 
-    // 3) Onboarding propriétaire avec Bearer token (si rôle + plan fournis)
-    if (role === "owner" && plan) {
-      const r = await fetch("/api/onboarding/owner", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}), // 👈 IMPORTANT
-        },
-        body: JSON.stringify({ plan, trial }),
-      });
+// 3) Onboarding : token si dispo, sinon userId renvoyé par signUp
+if (role === "owner" && plan) {
+  const r = await fetch("/api/onboarding/owner", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      plan,
+      trial,
+      // fallback (TEMP) si pas de token
+      ...(token ? {} : { userId: signUpData.user?.id }),
+    }),
+  });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    setMsg(j?.error || "Erreur onboarding propriétaire");
+    return;
+  }
+}
 
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        setMsg(j?.error || "Erreur onboarding propriétaire");
-        return;
-      }
-    }
 
     // 4) Redirection
     router.push(returnTo);
