@@ -1,6 +1,5 @@
-// app/api/debug/session/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export async function GET() {
   const supabase = createSupabaseServerClient();
