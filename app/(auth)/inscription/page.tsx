@@ -8,11 +8,13 @@ export const dynamic = "force-dynamic"; // évite le prerender error avec search
 
 export default function InscriptionPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-[60vh] flex items-center justify-center text-sm text-gray-500">
-        Chargement…
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] flex items-center justify-center text-sm text-gray-500">
+          Chargement…
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );
@@ -36,18 +38,28 @@ function SignupForm() {
     e.preventDefault();
     setMsg("");
 
+    // 1) Création du compte Supabase Auth
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setMsg(error.message);
       return;
     }
 
+    // 2) Récupérer le token de session côté client
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token ?? null;
+
+    // 3) Onboarding propriétaire avec Bearer token (si rôle + plan fournis)
     if (role === "owner" && plan) {
       const r = await fetch("/api/onboarding/owner", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}), // 👈 IMPORTANT
+        },
         body: JSON.stringify({ plan, trial }),
       });
+
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
         setMsg(j?.error || "Erreur onboarding propriétaire");
@@ -55,6 +67,7 @@ function SignupForm() {
       }
     }
 
+    // 4) Redirection
     router.push(returnTo);
   }
 
