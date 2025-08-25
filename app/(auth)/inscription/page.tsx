@@ -1,36 +1,58 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation"; // 👈 ajouter ici
+import React, { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
+export const dynamic = "force-dynamic"; // évite le prerender error avec searchParams
+
 export default function InscriptionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[60vh] flex items-center justify-center text-sm text-gray-500">
+        Chargement…
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const supabase = createClientComponentClient();
   const router = useRouter();
-  const sp = useSearchParams(); // maintenant ça compile ✅
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
+  const sp = useSearchParams();
 
   const plan = sp.get("plan");
   const role = sp.get("role");
   const trial = sp.get("trial");
   const returnTo = sp.get("returnTo") || "/annonces";
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState("");
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
 
     const { error } = await supabase.auth.signUp({ email, password });
-    if (error) return setMsg(error.message);
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
 
     if (role === "owner" && plan) {
-      await fetch("/api/onboarding/owner", {
+      const r = await fetch("/api/onboarding/owner", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ plan, trial }),
       });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setMsg(j?.error || "Erreur onboarding propriétaire");
+        return;
+      }
     }
 
     router.push(returnTo);
@@ -43,6 +65,13 @@ export default function InscriptionPage() {
         className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm space-y-4"
       >
         <h1 className="text-2xl font-bold text-center">Créer un compte</h1>
+
+        {role === "owner" && plan && (
+          <p className="text-xs text-gray-600 text-center">
+            Vous avez choisi la formule <b>{plan}</b>
+            {trial === "1m" ? " — essai 1 mois." : "."}
+          </p>
+        )}
 
         <input
           type="email"
@@ -69,7 +98,7 @@ export default function InscriptionPage() {
           S’inscrire
         </button>
 
-        {msg && <p className="text-center text-sm text-gray-600">{msg}</p>}
+        {msg && <p className="text-center text-sm text-red-600">{msg}</p>}
       </form>
     </main>
   );
