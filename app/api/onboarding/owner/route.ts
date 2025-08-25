@@ -1,6 +1,7 @@
+// app/api/onboarding/owner/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/lib/supabaseAdmin"; // ✅ correct import
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { Plan, SubscriptionStatus } from "@prisma/client";
@@ -8,7 +9,7 @@ import { Plan, SubscriptionStatus } from "@prisma/client";
 function addMonths(d: Date, m: number) { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; }
 
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
-  // 1) Bearer token (préféré)
+  // 1) Prefer Bearer token
   const auth = req.headers.get("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
   if (token) {
@@ -16,9 +17,8 @@ async function getUserIdFromRequest(req: Request): Promise<string | null> {
     if (!error && data?.user?.id) return data.user.id;
   }
 
-  // 2) Fallback cookies (si l’utilisateur a déjà une session valide)
-  const c = await cookies();
-  const supaFromCookies = createRouteHandlerClient({ cookies: () => c });
+  // 2) Fallback: cookies-based session (no await here in Next 15)
+  const supaFromCookies = createRouteHandlerClient({ cookies }); // ✅ pass the function
   const { data } = await supaFromCookies.auth.getUser();
   if (data?.user?.id) return data.user.id;
 
@@ -33,15 +33,14 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const plan = body.plan as Plan | undefined;
     const trial = body.trial as string | undefined; // "1m" possible
-
     if (!plan || !Object.values(Plan).includes(plan)) {
       return NextResponse.json({ error: "plan invalide" }, { status: 400 });
     }
 
-    // Marquer owner
+    // mark user as owner
     await prisma.user.update({ where: { id: userId }, data: { role: "owner" } });
 
-    // Créer/mettre à jour l’abonnement d’essai
+    // subscription state
     let status: SubscriptionStatus = "PENDING_PAYMENT";
     let currentPeriodEnd: Date | null = null;
     if (trial === "1m") { status = "TRIALING"; currentPeriodEnd = addMonths(new Date(), 1); }
