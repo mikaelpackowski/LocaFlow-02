@@ -1,28 +1,33 @@
-// app/(auth)/inscription/page.tsx
-"use client";
-import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-
+// ...imports...
 export default function InscriptionPage() {
-  const supabase = createClientComponentClient();
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
+  // ...
+  const sp = useSearchParams();
+  const plan = sp.get("plan");
+  const role = sp.get("role");
+  const trial = sp.get("trial"); // 👈 récupère '1m' si présent
+  const returnTo = sp.get("returnTo") || "/annonces";
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.auth.signUp({ email, password });
-    setMsg(error ? error.message : "Compte créé. Vérifiez vos emails.");
-  }
+    setMsg("");
 
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3">
-        <h1 className="text-2xl font-bold">Créer un compte</h1>
-        <input className="w-full border rounded px-3 py-2" placeholder="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
-        <input className="w-full border rounded px-3 py-2" placeholder="Mot de passe" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
-        <button className="w-full bg-indigo-600 text-white rounded py-2">S’inscrire</button>
-        {msg && <p className="text-sm">{msg}</p>}
-      </form>
-    </main>
-  );
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) return setMsg(error.message);
+
+    if (role === "owner" && plan) {
+      const r = await fetch("/api/onboarding/owner", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan, trial }), // 👈 on envoie trial
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setMsg(j?.error || "Erreur onboarding propriétaire");
+        return;
+      }
+    }
+
+    router.push(returnTo);
+  }
+  // ... le reste inchangé ...
 }
