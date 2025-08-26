@@ -14,12 +14,12 @@ export default async function ProprietaireDashboard() {
         <h1 className="text-2xl font-bold">Tableau de bord propriétaire</h1>
         <p className="mt-4 text-gray-600">
           Vous n’êtes pas connecté.{" "}
-          <a
-            className="text-indigo-600 underline"
-            href={`/connexion?next=${encodeURIComponent("/dashboard/proprietaire")}`}
-          >
-            Se connecter
-          </a>
+        <a
+  href={`/auth/login?next=${encodeURIComponent("/dashboard/proprietaire")}`}
+  className="inline-block rounded-full bg-indigo-600 px-5 py-2 text-white hover:bg-indigo-700"
+>
+  Se connecter
+</a>
         </p>
       </main>
     );
