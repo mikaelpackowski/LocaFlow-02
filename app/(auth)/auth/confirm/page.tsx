@@ -1,11 +1,24 @@
-// app/(auth)/auth/confirm/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
+          Validation en cours…
+        </main>
+      }
+    >
+      <ConfirmInner />
+    </Suspense>
+  );
+}
+
+function ConfirmInner() {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const sp = useSearchParams();
@@ -19,14 +32,14 @@ export default function ConfirmPage() {
 
   useEffect(() => {
     (async () => {
-      // 1) Échange du code contenu dans l’URL contre une session
+      // 1) Échanger le code de l’URL contre une session
       const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
       if (error) {
         setMsg("Lien invalide ou expiré.");
         return;
       }
 
-      // 2) Si propriétaire, on crée/maj l’abonnement (essai 1 mois, etc.)
+      // 2) Onboarding propriétaire si demandé (plan / trial)
       if (role === "owner" && plan) {
         const { data: s } = await supabase.auth.getSession();
         const token = s.session?.access_token ?? null;
@@ -47,7 +60,7 @@ export default function ConfirmPage() {
         }
       }
 
-      // 3) Redirection vers l’onboarding profil d’abord
+      // 3) Rediriger vers l’étape suivante (profil) ou vers 'next'
       const profileStep =
         role === "owner" ? "/onboarding/proprietaire" :
         role === "tenant" ? "/onboarding/locataire" :
@@ -55,7 +68,8 @@ export default function ConfirmPage() {
 
       router.replace(profileStep || next);
     })();
-  }, [supabase, role, plan, trial, next, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, role, plan, trial, next]);
 
   return (
     <main className="min-h-[60vh] grid place-items-center">
