@@ -26,7 +26,8 @@ function SignupForm() {
   const plan = sp.get("plan");
   const role = sp.get("role");
   const trial = sp.get("trial");
-  const returnTo = sp.get("returnTo") || "/dashboard/proprietaire";
+  // ✅ par défaut on pointe sur la page dashboard propriétaire
+  const returnTo = sp.get("returnTo") || "/proprietaire/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,17 +40,20 @@ function SignupForm() {
     setLoading(true);
 
     try {
-      // URL de redirection utilisée par le lien de confirmation
+      // ✅ origine robuste (SSR/CSR)
       const origin =
         typeof window !== "undefined"
           ? window.location.origin
-          : "https://www.forgesty.com";
+          : process.env.NEXT_PUBLIC_SITE_URL || "https://www.forgesty.com";
 
-      const confirmUrl = `${origin}/auth/confirm?next=${encodeURIComponent(
-        returnTo
-      )}&role=${encodeURIComponent(role ?? "")}&plan=${encodeURIComponent(
-        plan ?? ""
-      )}&trial=${encodeURIComponent(trial ?? "")}`;
+      // ✅ on passe next/role/plan/trial ET l’email (utile si tu fais “renvoyer l’e-mail”)
+      const confirmUrl =
+        `${origin}/auth/confirm` +
+        `?next=${encodeURIComponent(returnTo)}` +
+        `&role=${encodeURIComponent(role ?? "")}` +
+        `&plan=${encodeURIComponent(plan ?? "")}` +
+        `&trial=${encodeURIComponent(trial ?? "")}` +
+        `&email=${encodeURIComponent(email)}`;
 
       const { error } = await supabase.auth.signUp({
         email,
@@ -67,7 +71,8 @@ function SignupForm() {
       setMsg(
         "Un e-mail de confirmation vient de vous être envoyé. Cliquez sur le lien reçu pour continuer."
       );
-      // Optionnel : router.push("/auth/check-email");
+      // Si tu veux, tu peux rediriger vers une page “check-email”
+      // router.push("/auth/check-email");
     } catch (err: any) {
       setMsg(err?.message || "Erreur inconnue");
     } finally {
