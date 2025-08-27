@@ -23,7 +23,7 @@ function ConfirmInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const next = sp.get("next") || "/";
+  const next = sp.get("next") || "/proprietaire/dashboard";
   const role = sp.get("role") || "";
   const plan = sp.get("plan") || "";
   const trial = sp.get("trial") || "";
@@ -31,15 +31,34 @@ function ConfirmInner() {
   const [msg, setMsg] = useState("Validation en cours…");
 
   useEffect(() => {
+    let ran = false;
+
     (async () => {
-      // 1) Échanger le code de l’URL contre une session
-      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      if (ran) return;
+      ran = true;
+
+      // 1) Récupérer les params depuis le hash du lien magique Supabase
+      //    (format: /auth/confirm#access_token=...&type=signup&...)
+      const hash = window.location.hash?.substring(1) || "";
+      const hashParams = new URLSearchParams(hash);
+
+      if (!hashParams.has("access_token") && !hashParams.has("code")) {
+        setMsg("Lien invalide ou expiré.");
+        return;
+      }
+
+      // 2) Échanger le code contre une session
+      //    Supabase attend un URLSearchParams (pas l’URL complète)
+      const { error } = await supabase.auth.exchangeCodeForSession(hashParams);
       if (error) {
         setMsg("Lien invalide ou expiré.");
         return;
       }
 
-      // 2) Onboarding propriétaire si demandé (plan / trial)
+      // Optionnel : nettoyer le hash de l’URL
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+
+      // 3) Onboarding propriétaire si demandé
       if (role === "owner" && plan) {
         const { data: s } = await supabase.auth.getSession();
         const token = s.session?.access_token ?? null;
@@ -60,16 +79,16 @@ function ConfirmInner() {
         }
       }
 
-      // 3) Rediriger vers l’étape suivante (profil) ou vers 'next'
+      // 4) Redirection finale
       const profileStep =
         role === "owner" ? "/onboarding/proprietaire" :
         role === "tenant" ? "/onboarding/locataire" :
         null;
 
+      setMsg("✅ Email confirmé, redirection…");
       router.replace(profileStep || next);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, role, plan, trial, next]);
+  }, [supabase, router, role, plan, trial, next]);
 
   return (
     <main className="min-h-[60vh] grid place-items-center">
