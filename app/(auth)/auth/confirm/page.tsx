@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ConfirmPage() {
@@ -21,159 +21,71 @@ export default function ConfirmPage() {
 function ConfirmInner() {
   const supabase = createClientComponentClient();
   const router = useRouter();
-  const sp = useSearchParams();
-
-  const next = sp.get("next") || "/proprietaire/dashboard";
-  const role = sp.get("role") || "";
-  const plan = sp.get("plan") || "";
-  const trial = sp.get("trial") || "";
-
-  // Nouveau format Supabase (query params) possibles :
-  const token_hash = sp.get("token_hash");
-  const type = (sp.get("type") || "") as
-    | "signup"
-    | "magiclink"
-    | "recovery"
-    | "email_change"
-    | "";
-  const email = sp.get("email") || "";
-
   const [msg, setMsg] = useState("Validation en cours…");
 
   useEffect(() => {
-    let ran = false;
-
     (async () => {
-      if (ran) return;
-      ran = true;
+      // 1) Échange du code → session
+      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+      if (error) {
+        setMsg("Lien invalide ou expiré.");
+        return;
+      }
 
-      // CAS A — Nouveau format: verifyOtp(token_hash + type [+ email])
-      if (token_hash && type) {
-        const { data, error } = await supabase.auth.verifyOtp({
-          type,
-          token_hash,
-          // Supabase demande parfois l'email pour 'signup' / 'recovery'
-          email: email || undefined,
+      // 2) Récupérer l’utilisateur + user_metadata
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      const meta = (user?.user_metadata ?? {}) as Record<string, any>;
+
+      const intendedRole = meta.intended_role as string | undefined;
+      const intendedPlan = meta.intended_plan as string | undefined;
+      const intendedTrial = meta.intended_trial as string | undefined;
+      const intendedNext = (meta.intended_next as string | undefined) || "/";
+
+      // 3) Onboarding auto pour propriétaire si demandé
+      if (intendedRole === "owner" && intendedPlan) {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token ?? null;
+
+        const r = await fetch("/api/onboarding/owner", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ plan: intendedPlan, trial: intendedTrial }),
         });
 
-        if (error) {
-          setMsg("Lien invalide ou expiré.");
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          setMsg(j?.error || "Erreur d’onboarding.");
           return;
         }
-
-        // data.session peut être null selon le type ; on tente un échange si besoin
-        if (!data.session) {
-          const tryEx = await supabase.auth.exchangeCodeForSession(
-            window.location.href
-          );
-          if (tryEx.error) {
-            // Si on arrive ici: session non créée. On redirige vers la connexion.
-            router.replace(`/auth/login?next=${encodeURIComponent(next)}`);
-            return;
-          }
-        }
-
-        await afterConfirmed({ supabase, router, role, plan, trial, next });
-        return;
       }
 
-      // CAS B — Ancien format: tokens dans le hash (#access_token=…)
-      const hash = window.location.hash ?? "";
-      const hasTokens =
-        hash.includes("access_token=") ||
-        hash.includes("refresh_token=") ||
-        hash.includes("code=");
-
-      if (hasTokens) {
-        // Dans ta version des helpers, un string est attendu (l’URL complète ou le hash).
-        let { error } = await supabase.auth.exchangeCodeForSession(
-          hash ? hash : window.location.href
-        );
-
-        if (error && hash) {
-          // Fallback setSession manuel
-          const p = new URLSearchParams(hash.slice(1));
-          const access_token = p.get("access_token");
-          const refresh_token = p.get("refresh_token");
-          if (access_token && refresh_token) {
-            const res = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
-            error = res.error ?? null;
-          }
-        }
-
-        if (error) {
-          setMsg("Lien invalide ou expiré.");
-          return;
-        }
-
-        // Nettoyer le hash dans l’URL
-        history.replaceState(
-          null,
-          "",
-          window.location.pathname + window.location.search
-        );
-
-        await afterConfirmed({ supabase, router, role, plan, trial, next });
-        return;
+      // 4) (optionnel) Nettoyer les metadata temporaires
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            intended_role: null,
+            intended_plan: null,
+            intended_trial: null,
+            intended_next: null,
+          },
+        });
+      } catch {
+        /* non bloquant */
       }
 
-      // CAS C — Rien d’exploitable dans l’URL
-      setMsg("Lien invalide ou expiré.");
+      // 5) Redirection finale
+      router.replace(intendedNext);
     })();
-  }, [supabase, router, role, plan, trial, next, token_hash, type, email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main className="min-h-[60vh] grid place-items-center">
       <p className="text-gray-700">{msg}</p>
     </main>
   );
-}
-
-async function afterConfirmed({
-  supabase,
-  router,
-  role,
-  plan,
-  trial,
-  next,
-}: {
-  supabase: ReturnType<typeof createClientComponentClient>;
-  router: ReturnType<typeof useRouter>;
-  role: string;
-  plan: string;
-  trial: string;
-  next: string;
-}) {
-  // Onboarding propriétaire si demandé
-  if (role === "owner" && plan) {
-    const { data: s } = await supabase.auth.getSession();
-    const token = s.session?.access_token ?? null;
-
-    const r = await fetch("/api/onboarding/owner", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ plan, trial }),
-    });
-
-    if (!r.ok) {
-      // Si l'onboarding échoue, on renvoie vers le tableau de bord quand même.
-      // (Tu peux afficher un message si tu préfères)
-    }
-  }
-
-  const profileStep =
-    role === "owner"
-      ? "/onboarding/proprietaire"
-      : role === "tenant"
-      ? "/onboarding/locataire"
-      : null;
-
-  // Redirection finale
-  router.replace(profileStep || next);
 }
