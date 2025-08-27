@@ -37,25 +37,37 @@ function ConfirmInner() {
       if (ran) return;
       ran = true;
 
-      // 1) Récupérer les params depuis le hash du lien magique Supabase
-      //    (format: /auth/confirm#access_token=...&type=signup&...)
-      const hash = window.location.hash?.substring(1) || "";
-      const hashParams = new URLSearchParams(hash);
+      // Le lien de supabase met les tokens dans le hash (#access_token=...)
+      const hash = window.location.hash ?? "";
+      const hasTokens =
+        hash.includes("access_token=") || hash.includes("refresh_token=") || hash.includes("code=");
 
-      if (!hashParams.has("access_token") && !hashParams.has("code")) {
+      if (!hasTokens) {
         setMsg("Lien invalide ou expiré.");
         return;
       }
 
-      // 2) Échanger le code contre une session
-      //    Supabase attend un URLSearchParams (pas l’URL complète)
-      const { error } = await supabase.auth.exchangeCodeForSession(hashParams);
+      // 1) Tenter l’échange standard (dans ta version: string requis)
+      const urlForSupabase = hash ? hash : window.location.href;
+      let { error } = await supabase.auth.exchangeCodeForSession(urlForSupabase);
+
+      // 2) Fallback: si l’échange échoue, tenter un setSession manuel depuis le hash
+      if (error && hash) {
+        const p = new URLSearchParams(hash.slice(1));
+        const access_token = p.get("access_token");
+        const refresh_token = p.get("refresh_token");
+        if (access_token && refresh_token) {
+          const res = await supabase.auth.setSession({ access_token, refresh_token });
+          error = res.error ?? null;
+        }
+      }
+
       if (error) {
         setMsg("Lien invalide ou expiré.");
         return;
       }
 
-      // Optionnel : nettoyer le hash de l’URL
+      // Nettoyer le hash dans l’URL
       history.replaceState(null, "", window.location.pathname + window.location.search);
 
       // 3) Onboarding propriétaire si demandé
@@ -79,13 +91,12 @@ function ConfirmInner() {
         }
       }
 
-      // 4) Redirection finale
+      setMsg("✅ Email confirmé, redirection…");
       const profileStep =
         role === "owner" ? "/onboarding/proprietaire" :
         role === "tenant" ? "/onboarding/locataire" :
         null;
 
-      setMsg("✅ Email confirmé, redirection…");
       router.replace(profileStep || next);
     })();
   }, [supabase, router, role, plan, trial, next]);
