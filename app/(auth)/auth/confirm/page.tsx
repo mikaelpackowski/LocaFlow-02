@@ -6,13 +6,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ConfirmPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
-          Validation en cours…
-        </main>
-      }
-    >
+    <Suspense fallback={
+      <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
+        Validation en cours…
+      </main>
+    }>
       <ConfirmInner />
     </Suspense>
   );
@@ -23,122 +21,85 @@ function ConfirmInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  // Parcours (facultatif)
-  const next = sp.get("next") || "/dashboard/proprietaire";
+  const next = sp.get("next") || "/proprietaire/dashboard";
   const role = sp.get("role") || "";
   const plan = sp.get("plan") || "";
   const trial = sp.get("trial") || "";
 
-  // Params de confirmation
-  const type = (sp.get("type") || "signup") as
-    | "signup"
-    | "magiclink"
-    | "recovery"
-    | "email_change";
-  const email = sp.get("email") || "";
-  const token_hash = sp.get("token_hash") || "";
-
-  // Fallback éventuel si Supabase envoie ?code=… ou #access_token=…
-  const hasCodeOrToken =
-    typeof window !== "undefined" &&
-    (new URL(window.location.href).searchParams.has("code") ||
-      window.location.hash.includes("access_token="));
+  const token_hash = sp.get("token_hash");
+  const type = sp.get("type"); // "signup" | "magiclink" | etc.
+  const email = sp.get("email");
+  const code = sp.get("code"); // flux PKCE (hash fragment transformé en query par redirection)
 
   const [msg, setMsg] = useState("Validation en cours…");
-  const [details, setDetails] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      try {
-        // 1) Flux recommandé: token_hash (depuis email template)
-        if (token_hash) {
-          // Essai 1: avec email
-          let { error } = await supabase.auth.verifyOtp({
-            type,
-            token_hash,
-            email: email || undefined,
-          });
-
-          // Essai 2: sans email (certaines versions n'en ont pas besoin)
-          if (error) {
-            const try2 = await supabase.auth.verifyOtp({
-              type,
-              token_hash,
-            });
-            error = try2.error ?? null;
-
-            if (error) {
-              setMsg("Lien invalide ou expiré.");
-              setDetails(error.message || JSON.stringify(error));
-              return;
-            }
-          }
-        }
-        // 2) Fallback: lien avec ?code=… ou #access_token=…
-        else if (hasCodeOrToken) {
-          const { error } = await supabase.auth.exchangeCodeForSession(
-            window.location.href
-          );
-          if (error) {
-            setMsg("Lien invalide ou expiré.");
-            setDetails(error.message || JSON.stringify(error));
-            return;
-          }
-        } else {
+      // 1) Vérifier le lien suivant le format reçu
+      if (token_hash && type && email) {
+        // Cas email + token_hash (template Supabase verif email)
+        const { error } = await supabase.auth.verifyOtp({
+          type: type as any,       // "signup" / "email_change" / "magiclink"
+          token_hash,
+          email,
+        });
+        if (error) {
           setMsg("Lien invalide ou expiré.");
-          setDetails("Aucun token_hash / code / access_token détecté dans l’URL.");
           return;
         }
-
-        // 3) Onboarding propriétaire si demandé
-        if (role === "owner" && plan) {
-          const { data: s } = await supabase.auth.getSession();
-          const token = s.session?.access_token ?? null;
-
-          const r = await fetch("/api/onboarding/owner", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({ plan, trial }),
-          });
-
-          if (!r.ok) {
-            const j = await r.json().catch(() => ({}));
-            setMsg("Erreur d’onboarding.");
-            setDetails(j?.error || `HTTP ${r.status}`);
-            return;
-          }
+      } else if (code) {
+        // Cas PKCE (lien avec ?code=...) -> on échange le code contre une session
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setMsg("Lien invalide ou expiré.");
+          return;
         }
-
-        // 4) Redirection finale
-        const profileStep =
-          role === "owner"
-            ? "/onboarding/proprietaire"
-            : role === "tenant"
-            ? "/onboarding/locataire"
-            : null;
-
-        router.replace(profileStep || next);
-      } catch (e: any) {
+      } else {
         setMsg("Lien invalide ou expiré.");
-        setDetails(e?.message || String(e));
+        return;
       }
+
+      // 2) Récupérer la session obtenue
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      if (!session) {
+        setMsg("Impossible de créer la session.");
+        return;
+      }
+
+      // 3) Pousser la session dans les cookies du serveur (bridge)
+      await fetch("/auth/callback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ session }),
+      });
+
+      // 4) Onboarding éventuel (création/MAJ d’abonnement)
+      if (role === "owner" && plan) {
+        const r = await fetch("/api/onboarding/owner", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ plan, trial }),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          setMsg(j?.error || "Erreur d’onboarding.");
+          return;
+        }
+      }
+
+      // 5) Redirection finale
+      router.replace(next);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token_hash, email, type, hasCodeOrToken, role, plan, trial, next]);
+  }, [supabase]);
 
   return (
-    <main className="min-h-[60vh] grid place-items-center text-center px-4">
-      <div>
-        <p className="text-gray-800">{msg}</p>
-        {details && (
-          <p className="mt-2 text-xs text-gray-500 break-all">
-            Détails : {details}
-          </p>
-        )}
-      </div>
+    <main className="min-h-[60vh] grid place-items-center">
+      <p className="text-gray-700">{msg}</p>
     </main>
   );
 }
