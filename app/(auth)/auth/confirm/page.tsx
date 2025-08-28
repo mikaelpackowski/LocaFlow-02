@@ -6,13 +6,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ConfirmPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
-          Validation en cours…
-        </main>
-      }
-    >
+    <Suspense fallback={
+      <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
+        Validation en cours…
+      </main>
+    }>
       <ConfirmInner />
     </Suspense>
   );
@@ -23,22 +21,15 @@ function ConfirmInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  // paramètres « parcours », optionnels
   const next = sp.get("next") || "/dashboard/proprietaire";
   const role = sp.get("role") || "";
   const plan = sp.get("plan") || "";
   const trial = sp.get("trial") || "";
 
-  // paramètres de vérification
-  const type = (sp.get("type") || "signup") as
-    | "signup"
-    | "magiclink"
-    | "recovery"
-    | "email_change";
+  const type = (sp.get("type") || "signup") as "signup" | "magiclink" | "recovery" | "email_change";
   const email = sp.get("email") || "";
   const token_hash = sp.get("token_hash") || "";
 
-  // éventuellement présents selon d’autres flux (oauth/pkce)
   const hasCodeOrToken =
     typeof window !== "undefined" &&
     (new URL(window.location.href).searchParams.has("code") ||
@@ -49,7 +40,7 @@ function ConfirmInner() {
   useEffect(() => {
     (async () => {
       try {
-        // Cas 1 : on a un token_hash => vérifier explicitement l’OTP (recommandé pour email)
+        // Cas 1: verifyOtp via token_hash (recommandé)
         if (token_hash && email) {
           const { data, error } = await supabase.auth.verifyOtp({
             type,
@@ -61,11 +52,9 @@ function ConfirmInner() {
             return;
           }
         }
-        // Cas 2 : fallback si on arrive via un flux qui fournit ?code= ou #access_token
+        // Cas 2: fallback via exchangeCodeForSession (string requis)
         else if (hasCodeOrToken) {
-          const { error } = await supabase.auth.exchangeCodeForSession(
-            new URL(window.location.href)
-          );
+          const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
           if (error) {
             setMsg("Lien invalide ou expiré.");
             return;
@@ -98,11 +87,9 @@ function ConfirmInner() {
 
         // Redirection finale
         const profileStep =
-          role === "owner"
-            ? "/onboarding/proprietaire"
-            : role === "tenant"
-            ? "/onboarding/locataire"
-            : null;
+          role === "owner" ? "/onboarding/proprietaire" :
+          role === "tenant" ? "/onboarding/locataire" :
+          null;
 
         router.replace(profileStep || next);
       } catch {
