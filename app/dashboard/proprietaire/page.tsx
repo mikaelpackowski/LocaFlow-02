@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+export default function OldUrl() {
+  redirect("app/(default)/proprietaire/dashboard");
+  }
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
