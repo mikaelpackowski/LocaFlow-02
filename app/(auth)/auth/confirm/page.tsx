@@ -42,12 +42,16 @@ function ConfirmInner() {
       let authErr: string | null = null;
 
       try {
-        if (tokenHash && emailParam) {
-          // ✅ Cas email/PKCE de Supabase (token_hash dans l’URL)
-          const { error } = await supabase.auth.verifyOtp({
-            type: (type as any) || "signup", // "signup" la plupart du temps
-            token_hash: tokenHash,
-            email: emailParam,
+        // ...
+if (tokenHash) {
+  // ✅ Cas email/PKCE (signup, recovery…)
+  const { error } = await supabase.auth.verifyOtp({
+    type: (type as any) || "signup", 
+    token_hash: tokenHash,
+  });
+  if (error) authErr = error.message;
+}
+
           });
           if (error) authErr = error.message;
         } else if (code || window.location.hash.includes("access_token")) {
