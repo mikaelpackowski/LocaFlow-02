@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   }
 
   // Forward the original params to /auth/confirm (they'll be useful for onboarding)
-  const next = url.searchParams.get("next") || "/dashboard/proprietaire";
+  const next = url.searchParams.get("next") || "/app/(default)/proprietaire/dashboard";
   const role = url.searchParams.get("role") || "";
   const plan = url.searchParams.get("plan") || "";
   const trial = url.searchParams.get("trial") || "";
