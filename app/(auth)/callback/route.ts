@@ -1,47 +1,34 @@
-// app/auth/callback/route.ts
-import { cookies } from "next/headers";
+// app/(auth)/callback/route.ts
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
+export const dynamic = "force-dynamic";
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
   const supabase = createRouteHandlerClient({ cookies });
 
-  // IMPORTANT : utilise les params (code, token_hash/PKCE) présents dans l’URL
-  await supabase.auth.exchangeCodeForSession(url.searchParams);
+  // ✅ Must be a string (full URL)
+  const { error } = await supabase.auth.exchangeCodeForSession(url.toString());
+  if (error) {
+    // Optional: surface the error
+    const errUrl = new URL("/auth/confirm", url.origin);
+    errUrl.searchParams.set("error", "invalid_link");
+    return NextResponse.redirect(errUrl);
+  }
 
-  // On récupère les paramètres pour poursuivre le parcours
+  // Forward the original params to /auth/confirm (they'll be useful for onboarding)
   const next = url.searchParams.get("next") || "/";
   const role = url.searchParams.get("role") || "";
   const plan = url.searchParams.get("plan") || "";
   const trial = url.searchParams.get("trial") || "";
 
-  // Rediriger vers la page de confirmation (ou directement dashboard)
-  const confirmUrl = new URL("/auth/confirm", url.origin);
-  confirmUrl.searchParams.set("next", next);
-  if (role) confirmUrl.searchParams.set("role", role);
-  if (plan) confirmUrl.searchParams.set("plan", plan);
-  if (trial) confirmUrl.searchParams.set("trial", trial);
+  const redirect = new URL("/auth/confirm", url.origin);
+  redirect.searchParams.set("next", next);
+  if (role) redirect.searchParams.set("role", role);
+  if (plan) redirect.searchParams.set("plan", plan);
+  if (trial) redirect.searchParams.set("trial", trial);
 
-  return NextResponse.redirect(confirmUrl, { status: 302 });
-}
-
-export async function POST(request: Request) {
-  // Certains SDK envoient un POST ; on gère pareil.
-  const url = new URL(request.url);
-  const supabase = createRouteHandlerClient({ cookies });
-  await supabase.auth.exchangeCodeForSession(url.searchParams);
-
-  const next = url.searchParams.get("next") || "/";
-  const role = url.searchParams.get("role") || "";
-  const plan = url.searchParams.get("plan") || "";
-  const trial = url.searchParams.get("trial") || "";
-
-  const confirmUrl = new URL("/auth/confirm", url.origin);
-  confirmUrl.searchParams.set("next", next);
-  if (role) confirmUrl.searchParams.set("role", role);
-  if (plan) confirmUrl.searchParams.set("plan", plan);
-  if (trial) confirmUrl.searchParams.set("trial", trial);
-
-  return NextResponse.redirect(confirmUrl, { status: 302 });
+  return NextResponse.redirect(redirect);
 }
