@@ -24,47 +24,40 @@ function ConfirmInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const next  = sp.get("next")  || "/dashboard/proprietaire";
-  const role  = sp.get("role")  || "";
-  const plan  = sp.get("plan")  || "";
+  // Params éventuels rajoutés par ton parcours
+  const next = sp.get("next") || "/";
+  const role = sp.get("role") || "";
+  const plan = sp.get("plan") || "";
   const trial = sp.get("trial") || "";
 
-  const type        = sp.get("type");          // "signup" | "recovery" | etc.
-  const emailParam  = sp.get("email") || "";   // requis pour verifyOtp (PKCE)
-  const tokenHash   = sp.get("token_hash");    // PKCE flow
-  const code        = sp.get("code");          // OAuth/code flow
+  // Params envoyés par Supabase
+  const type = (sp.get("type") || "signup") as any; // "signup" | "recovery" | ...
+  const tokenHash = sp.get("token_hash"); // présent pour l’email (PKCE)
 
   const [msg, setMsg] = useState("Validation en cours…");
 
   useEffect(() => {
     (async () => {
-      // 1) Finaliser la session côté client
-      let authErr: string | null = null;
+      let authErr: string | undefined;
 
-      try {
-        // ...
-if (tokenHash) {
-  // ✅ Cas email/PKCE (signup, recovery…)
-  const { error } = await supabase.auth.verifyOtp({
-    type: (type as any) || "signup", 
-    token_hash: tokenHash,
-  });
-  if (error) authErr = error.message;
-}
-
-          });
-          if (error) authErr = error.message;
-        } else if (code || window.location.hash.includes("access_token")) {
-          // ✅ Cas OAuth (code) ou hash access_token
-          const { error } = await supabase.auth.exchangeCodeForSession(
-            window.location.href
-          );
-          if (error) authErr = error.message;
-        } else {
-          authErr = "Session absente. Réessayez depuis l’e-mail de confirmation.";
-        }
-      } catch (e: any) {
-        authErr = e?.message || "Erreur de confirmation.";
+      // ✅ 1) Cas e-mail (PKCE) — on NE passe QUE token_hash + type
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          type,
+          token_hash: tokenHash,
+        });
+        if (error) authErr = error.message;
+      }
+      // ✅ 2) Cas OAuth code / hash access_token
+      else if (sp.get("code") || window.location.hash.includes("access_token")) {
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href // string attendu
+        );
+        if (error) authErr = error.message;
+      }
+      // Aucun param utile trouvé
+      else {
+        authErr = "Session absente. Réessayez depuis l’e-mail de confirmation.";
       }
 
       if (authErr) {
@@ -72,37 +65,32 @@ if (tokenHash) {
         return;
       }
 
-      // 2) Onboarding propriétaire (création/MAJ d’abonnement)
-      try {
-        if (role === "owner" && plan) {
-          const { data } = await supabase.auth.getSession();
-          const token = data.session?.access_token;
+      // ✅ 3) Onboarding propriétaire -> crée/maj la Subscription
+      if (role === "owner" && plan) {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
 
-          const res = await fetch("/api/onboarding/owner", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({ plan, trial }),
-          });
+        const r = await fetch("/api/onboarding/owner", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ plan, trial }),
+        });
 
-          if (!res.ok) {
-            const j = await res.json().catch(() => ({}));
-            setMsg(j?.error || "Erreur d’onboarding.");
-            return;
-          }
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          setMsg(j?.error || "Erreur d’onboarding.");
+          return;
         }
-      } catch (e: any) {
-        setMsg(e?.message || "Erreur d’onboarding.");
-        return;
       }
 
-      // 3) Redirection finale
+      // ✅ 4) Redirection finale
       router.replace(next);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, next, role, plan, trial, tokenHash, emailParam, code, type]);
+  }, [supabase, next, role, plan, trial, tokenHash, type, sp]);
 
   return (
     <main className="min-h-[60vh] grid place-items-center">
