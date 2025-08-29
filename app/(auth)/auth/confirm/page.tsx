@@ -1,4 +1,61 @@
-useEffect(() => {
+"use client";
+
+import React, { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+
+const ONBOARDING_KEY = "fg_onboarding";
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<Screen msg="Validation en cours…" />}>
+      <ConfirmInner />
+    </Suspense>
+  );
+}
+
+function Screen({ msg }: { msg: string }) {
+  return (
+    <main className="min-h-[60vh] grid place-items-center">
+      <p className="text-gray-700">{msg}</p>
+    </main>
+  );
+}
+
+function ConfirmInner() {
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const sp = useSearchParams();
+
+  // URL (rarement présents avec PKCE)
+  let next = sp.get("next") || "";
+  let role = sp.get("role") || "";
+  let plan = sp.get("plan") || "";
+  let trial = sp.get("trial") || "";
+
+  // Si manquants, on relit ce qu’on a stocké au signup
+  if (!role || !plan || !next) {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(ONBOARDING_KEY) : null;
+      if (raw) {
+        const saved = JSON.parse(raw);
+        next = next || saved?.next || "/";
+        role = role || saved?.role || "";
+        plan = plan || saved?.plan || "";
+        trial = trial || "";
+      }
+    } catch {}
+  }
+  next = next || "/";
+
+  const tokenHash = sp.get("token_hash");
+  const type = (sp.get("type") || "").toLowerCase();
+  const email = sp.get("email") || "";
+  const code = sp.get("code");
+
+  const [msg, setMsg] = useState("Validation en cours…");
+
+ useEffect(() => {
   (async () => {
     const url = new URL(window.location.href);
     const params = url.searchParams;
@@ -58,3 +115,4 @@ useEffect(() => {
   })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [supabase, role, plan, trial, next]);
+
