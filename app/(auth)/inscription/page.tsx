@@ -6,7 +6,13 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="min-h-[60vh] grid place-items-center text-sm text-gray-500">Chargement…</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
+          Chargement…
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );
@@ -34,20 +40,23 @@ function SignupForm() {
 
     try {
       const origin =
-        typeof window !== "undefined" ? window.location.origin : "https://www.forgesty.com";
+        typeof window !== "undefined"
+          ? window.location.origin
+          : "https://www.forgesty.com";
 
-      // ✅ Redirige vers /auth/callback (et non /auth/confirm)
-      const emailRedirectTo =
-        `${origin}/auth/callback` +
-        `?next=${encodeURIComponent(returnTo)}` +
-        `&role=${encodeURIComponent(role)}` +
-        `&plan=${encodeURIComponent(plan)}` +
-        `&trial=${encodeURIComponent(trial)}`;
+      // ✅ Toujours passer par /auth/callback
+      const redirectTo = new URL("/auth/callback", origin);
+      redirectTo.searchParams.set("next", returnTo);
+      if (role) redirectTo.searchParams.set("role", role);
+      if (plan) redirectTo.searchParams.set("plan", plan);
+      if (trial) redirectTo.searchParams.set("trial", trial);
 
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo },
+        options: {
+          emailRedirectTo: redirectTo.toString(),
+        },
       });
 
       if (error) {
@@ -55,7 +64,9 @@ function SignupForm() {
         return;
       }
 
-      setMsg("Un e-mail de confirmation vient de vous être envoyé. Cliquez sur le lien pour continuer.");
+      setMsg(
+        "Un e-mail de confirmation vient de vous être envoyé. Cliquez sur le lien pour continuer."
+      );
       // Optionnel : router.push("/auth/check-email");
     } catch (err: any) {
       setMsg(err?.message || "Erreur inconnue");
@@ -66,7 +77,10 @@ function SignupForm() {
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-gray-50">
-      <form onSubmit={handleSignup} className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm space-y-4">
+      <form
+        onSubmit={handleSignup}
+        className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm space-y-4"
+      >
         <h1 className="text-2xl font-bold text-center">Créer un compte</h1>
 
         {role === "owner" && plan && (
@@ -106,7 +120,10 @@ function SignupForm() {
 
         <p className="text-center text-sm text-gray-500">
           Déjà un compte ?{" "}
-          <a className="text-indigo-600 underline" href={`/auth/login?next=${encodeURIComponent(returnTo)}`}>
+          <a
+            className="text-indigo-600 underline"
+            href={`/auth/login?next=${encodeURIComponent(returnTo)}`}
+          >
             Se connecter
           </a>
         </p>
