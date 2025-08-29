@@ -36,8 +36,9 @@ function SignupForm() {
       const origin =
         typeof window !== "undefined" ? window.location.origin : "https://www.forgesty.com";
 
-      const confirmUrl =
-        `${origin}/auth/confirm` +
+      // ✅ Redirige vers /auth/callback (et non /auth/confirm)
+      const emailRedirectTo =
+        `${origin}/auth/callback` +
         `?next=${encodeURIComponent(returnTo)}` +
         `&role=${encodeURIComponent(role)}` +
         `&plan=${encodeURIComponent(plan)}` +
@@ -46,7 +47,7 @@ function SignupForm() {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: confirmUrl },
+        options: { emailRedirectTo },
       });
 
       if (error) {
@@ -55,6 +56,7 @@ function SignupForm() {
       }
 
       setMsg("Un e-mail de confirmation vient de vous être envoyé. Cliquez sur le lien pour continuer.");
+      // Optionnel : router.push("/auth/check-email");
     } catch (err: any) {
       setMsg(err?.message || "Erreur inconnue");
     } finally {
