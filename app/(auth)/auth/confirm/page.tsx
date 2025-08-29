@@ -1,4 +1,3 @@
-// app/(auth)/auth/confirm/page.tsx
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -7,13 +6,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ConfirmPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
-          Validation en cours…
-        </main>
-      }
-    >
+    <Suspense fallback={
+      <main className="min-h-[60vh] grid place-items-center text-sm text-gray-500">
+        Validation en cours…
+      </main>
+    }>
       <ConfirmInner />
     </Suspense>
   );
@@ -29,7 +26,7 @@ function ConfirmInner() {
   const plan  = sp.get("plan")  || "";
   const trial = sp.get("trial") || "";
 
-  const [msg, setMsg] = useState("Validation en cours…");
+  const [msg, setMsg] = useState("Finalisation…");
   const ran = useRef(false);
 
   useEffect(() => {
@@ -38,34 +35,21 @@ function ConfirmInner() {
 
     (async () => {
       try {
-        // 1) Finaliser une éventuelle session côté client (si l'URL contient des preuves d'auth)
-        const href = typeof window !== "undefined" ? window.location.href : "";
-        if (href) {
-          const url = new URL(href);
-          const hasAuthArtifacts =
-            url.searchParams.has("code") ||
-            url.searchParams.has("token_hash") ||
-            url.hash.includes("access_token");
-
-          if (hasAuthArtifacts) {
-            const { error } = await supabase.auth.exchangeCodeForSession(url.toString());
-            if (error) {
-              setMsg("Lien invalide ou expiré.");
-              return;
-            }
-          }
+        // Ici on N’ÉCHANGE PLUS le code : c’est déjà fait par /auth/callback
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          setMsg("Session absente. Réessayez depuis l’e-mail de confirmation.");
+          return;
         }
 
-        // 2) Onboarding propriétaire (création / MAJ d'abonnement)
+        // Onboarding propriétaire
         if (role === "owner" && plan) {
-          const { data } = await supabase.auth.getSession();
-          const token = data.session?.access_token;
-
+          const token = data.session.access_token;
           const res = await fetch("/api/onboarding/owner", {
             method: "POST",
             headers: {
               "content-type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ plan, trial }),
           });
@@ -77,13 +61,11 @@ function ConfirmInner() {
           }
         }
 
-        // 3) Redirection finale
         router.replace(next);
       } catch (e: any) {
         setMsg(e?.message || "Erreur inattendue.");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, router, next, role, plan, trial]);
 
   return (
